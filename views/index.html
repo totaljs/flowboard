@@ -1,0 +1,207 @@
+@{layout('')}
+
+<!DOCTYPE html>
+<html>
+<head>
+	<title>@(Flowboard:) @{config.name}</title>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=11" />
+	<meta name="format-detection" content="telephone=no" />
+	<meta name="viewport" content="width=1280, user-scalable=no" />
+	<meta name="robots" content="all,follow" />
+	@{import('default.css', 'default.js')}
+</head>
+<body data-jc="exec,binder">
+
+		<div data-jc="loading"></div>
+		<div data-jc="confirm"></div>
+		<div data-jc="autocomplete"></div>
+		<div data-jc="calendar" data-days="@(SU,MO,TU,WE,TH,FR,SO)" data-months="@(January,February,March,April,May,June,July,August,September,October,November,December)" data-today="@(Set date to today)" data-firstday="0"></div>
+		<div data-jc="autocomplete"></div>
+		<div data-jc="contextmenu"></div>
+		<div data-jc="message" data-button="@(Close)"></div>
+		<div id="success"><span class="fa fa-refresh fa-spin"></span></div>
+
+		<div class="mainmenu">
+			<section class="tabs">
+				<nav>
+					<a href="javascript:void(0)" class="exec highlight" data-exec="#flow.apply"><i class="fa fa-floppy-o"></i>@(SAVE)</a>
+					<a href="javascript:void(0)" title="@(Database)" class="exec onlyicon" data-path="common.form" data-value="'database'"><i class="fa fa-database"></i></a>
+					<a href="javascript:void(0)" title="@(Import)" class="exec onlyicon" data-path="common.form" data-value="'import'"><i class="fa fa-folder-o"></i></a>
+					<a href="javascript:void(0)" title="@(Export)" class="exec onlyicon" data-path="common.form" data-value="'export'"><i class="fa fa-copy"></i></a>
+					<a href="javascript:void(0)" title="@(Clear)" class="exec onlyicon" data-exec="#flow.clear"><i class="fa fa-trash-o"></i></a>
+				</nav>
+			</section>
+
+			<div class="padding">
+				<div data-jc="textbox" data-jc-path="common.search" data-jc-type="search" data-placeholder="@(Search parts ...)" data-jc-type="search"></div>
+			</div>
+
+			<div data-jc="search" data-jc-path="common.search" data-selector="li">
+				<div class="components-container">
+					<div class="scroller">
+						<ul data-jc="repeater-group" data-jc-path="common.components" data-group="group" class="components">
+							<script type="text/html">
+								<li draggable="true" class="component" data-id="{{ id }}" data-search="{{ name }}">
+									<div><i class="fa fa-square" style="color:{{ color }}"></i>{{ name }}</div>
+								</li>
+							</script>
+							<script type="text/html">
+								<li class="group" data-search=""><i class="fa fa-folder-o"></i>{{ group }}</li>
+								{{ body | raw }}
+							</script>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="body">
+			<section class="tabs">
+				<nav data-jc="repeater" data-jc-path="flow.tabs">
+					<script type="text/html">
+						<a href="#{{ linker }}" data-id="{{ id }}" data-b="common.tab" data-b-class="n => (n && n.id === flow.tabs[{{ index }}].id ? '+' : '-') + 'selected +tab'">{{ name }}</a>
+					</script>
+				</nav>
+				<a href="javascript:void(0)" class="exec" data-exec="#tabs.add"><i class="fa fa-plus"></i></a>
+			</section>
+			<div class="designer-container">
+				<div id="designerstate"></div>
+				<nav id="designerbuttons">
+					<a href="javascript:void(0)" class="exec disabled" title="@(Duplicate component)" data-exec="#designer.duplicate"><i class="fa fa-copy"></i></a>
+					<a href="javascript:void(0)" class="exec disabled" title="@(Remove selection)" data-exec="#designer.remove"><i class="fa fa-times-circle"></i></a>
+				</nav>
+				<div id="designerzoom">
+					<a href="javascript:void(0)" class="exec" title="@(Zoom in)" data-exec="#designer.zoomin"><i class="fa fa-search-plus"></i></a>
+					<a href="javascript:void(0)" class="exec" title="@(Reset zoom)" data-exec="#designer.zoomreset"><i class="fa fa-unsorted"></i></a>
+					<a href="javascript:void(0)" class="exec" title="@(Zoom out)" data-exec="#designer.zoomout"><i class="fa fa-search-minus"></i></a>
+				</div>
+				<div class="designer-scrollbar">
+					<div data-jc="designer" data-jc-path="flow.designer"></div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div data-jc="importer" data-jc-path="common.form" data-if="value === 'tab'" data-url="@{repository.url}templates/form-tab.html"></div>
+	<div data-jc="importer" data-jc-path="common.form" data-if="value === 'settings'" data-url="@{repository.url}templates/form-settings.html"></div>
+	<div data-jc="importer" data-jc-path="common.form" data-if="value === 'export'" data-url="@{repository.url}templates/form-export.html" data-reload="formexport_reload"></div>
+	<div data-jc="importer" data-jc-path="common.form" data-if="value === 'import'" data-url="@{repository.url}templates/form-import.html" data-reload="formimport_reload"></div>
+	<div data-jc="importer" data-jc-path="common.form" data-if="value === 'database'" data-url="@{repository.url}templates/form-database.html" data-reload="formdatabase_reload"></div>
+
+	<div id="flowsettings"></div>
+	<div id="tmpclone"></div>
+
+	<script>
+		UPTODATE('1 day');
+
+		MAKE('common', function() {
+			!this.panel && (this.panel = 'info');
+			!this.minimized && (this.minimized = false);
+			this.callbacks = {};
+			this.statics = {}; // cache for static content
+		});
+
+		var flow = {};
+		var settings = {};
+		var mdraggable = {};
+
+		$(window).on('hashchange', function() {
+			EMIT('designer.refresh');
+		}).trigger('hashchange');
+
+		$(document).on('dblclick', '.tab', function() {
+			OPERATION('tabs.upd')(this.getAttribute('data-id'));
+		});
+
+		$(window).on('keydown', function(e) {
+			e.keyCode === 13 && (e.ctrlKey || e.metaKey) && OPERATION('flow.apply')();
+		});
+
+		// Tabs operations
+		OPERATION('tabs.add', function() {
+			SET('formtab', {}, true);
+			SET('common.form', 'tab');
+		});
+
+		OPERATION('tabs.upd', function(id) {
+			var item = flow.tabs.findItem('id', id);
+			if (item) {
+				SET('formtab', CLONE(item), true);
+				SET('common.form', 'tab');
+			}
+		});
+
+		OPERATION('tabs.rem', function(id) {
+			flow.components = flow.components.remove('tab', id);
+			SET('flow.tabs', flow.tabs.remove('id', id));
+			SETTER('binder', 'scan');
+			if (common.tab.id === id)
+				location.hash = flow.tabs[0].linker;
+			setState(MESSAGES.apply);
+		});
+
+		OPERATION('debug.clear', function() {
+			$('#debugpanel').empty();
+		});
+
+		ON('tabs.save', function(form) {
+			var o = form.id ? flow.tabs.findItem('id', form.id) : {};
+			o.name = form.name;
+			o.icon = form.icon;
+			o.linker = o.name.slug();
+
+			if (!o.id) {
+				o.id = Date.now().toString();
+				flow.tabs.push(o);
+			}
+
+			UPDATE('flow.tabs');
+			SETTER('binder', 'scan');
+			location.hash = o.linker;
+		});
+
+		ON('online', function(online) {
+			SETTER('loading', online ? 'hide' : 'show');
+		});
+
+		ON('message', function(message) {
+		});
+
+		// Prevention for "backspace"
+		WATCH('common.form', function(path, value) {
+			FIND('designer').disabled = value ? true : false;
+		});
+
+		ON('resize', function() {
+			$('.scroller').each(function() {
+				var el = $(this);
+				var top = el.offset().top;
+				var h = el.closest('.mainmenu').height();
+				el.css('height', h - top);
+			});
+		});
+
+		OPERATION('designer.zoomin', function() {
+			SETTER('designer', 'zoom', 1);
+		});
+
+		OPERATION('designer.zoomout', function() {
+			SETTER('designer', 'zoom', -1);
+		});
+
+		OPERATION('designer.zoomreset', function() {
+			SETTER('designer', 'zoom', 0);
+		});
+
+		OPERATION('designer.remove', function(el) {
+			!el.hasClass('disabled') && SETTER('designer', 'remove');
+		});
+
+		OPERATION('designer.duplicate', function(el) {
+			!el.hasClass('disabled') && SETTER('designer', 'duplicate');
+		});
+
+	</script>
+
+</body>
+</html>
