@@ -845,28 +845,18 @@ COMPONENT('websocket', function() {
 });
 
 COMPONENT('designer', function() {
+
 	var self = this;
-	var svg, connection;
-	var drag = {};
-	var skip = false;
-	var db, data, selected, dragdrop, container, lines, main, scroller;
+	var svg;
+	var scroller;
 	var moving = { x: 0, y: 0, drag: false };
-	var zoom = 1;
 
-	self.readonly();
 	self.make = function() {
-		scroller = self.element.parent();
 		self.classes('ui-designer');
-		self.append('<svg width="3000" height="3000"></svg>');
-		var tmp = self.find('svg');
-		svg = $(tmp.get(0));
-		main = svg.asvg('g');
-		connection = main.asvg('path').attr('class', 'connection');
-		lines = main.asvg('g');
-		container = main.asvg('g');
-		self.resize();
-
-		tmp.on('mousedown mousemove mouseup', function(e) {
+		self.append('<div class="ui-designer-grid"><svg width="4000" height="4000"></svg></div>');
+		svg = self.find('svg');
+		scroller = self.element.parent().parent();
+		svg.on('mousedown mousemove mouseup', function(e) {
 			if (e.type === 'mousemove') {
 				if (!moving.drag)
 					return;
@@ -880,97 +870,8 @@ COMPONENT('designer', function() {
 			moving.x = e.pageX + scroller.prop('scrollLeft');
 			moving.y = e.pageY + scroller.prop('scrollTop');
 		});
-
-		$(window).on('keydown', function(e) {
-
-			if (e.keyCode === 68 && (e.ctrlKey || e.metaKey) && selected) {
-				e.preventDefault();
-				self.duplicate();
-				return;
-			}
-
-			if (e.target.tagName === 'BODY') {
-				if (e.keyCode === 38) {
-					self.move(0, -20, e);
-				} else if (e.keyCode === 40) {
-					self.move(0, 20, e);
-				} else if (e.keyCode === 39) {
-					self.move(20, 0, e);
-				} else if (e.keyCode === 37) {
-					self.move(-20, 0, e);
-				}
-			}
-
-			if ((e.keyCode !== 8 && e.keyCode !== 46) || !selected || self.disabled || e.target.tagName !== 'BODY')
-				return;
-			self.remove();
-		});
-
-
-		self.remove = function() {
-		};
-
-		self.duplicate = function() {
-		};
-
-		self.event('dragover dragenter drag drop', 'svg', function(e) {
-			console.log(e);
-			e.preventDefault();
-		});
 	};
 
-	self.dragdrop = function(el) {
-		dragdrop = el;
-	};
-
-	self.resize = function() {
-		var size = getSize('.body');
-		size.height -= self.element.offset().top;
-		self.element.css(size);
-	};
-
-	self.add = function(item) {
-	};
-
-	self.move = function(x, y, e) {
-	};
-
-	self.setter = function(value) {
-
-		if (skip) {
-			skip = false;
-			return;
-		}
-
-		if (!value)
-			return;
-
-		db = {};
-		data = {};
-		selected = null;
-
-		value.forEach(self.add);
-	};
-
-	self.getZoom = function() {
-		return zoom;
-	};
-
-	self.zoom = function(val) {
-		switch (val) {
-			case 0:
-				zoom = 1;
-				break;
-			case 1:
-				zoom += 0.1;
-				break;
-			case -1:
-				zoom -= 0.1;
-				break;
-		}
-
-		main.attr('transform', 'scale({0})'.format(zoom));
-	};
 });
 
 COMPONENT('checkbox', function() {
@@ -2295,7 +2196,7 @@ COMPONENT('contextmenu', function() {
 	var container;
 	var arrow;
 
-	self.template = Tangular.compile('<div data-value="{{ value }}"{{ if selected }} class="selected"{{ fi }}><i class="fa {{ icon }}"></i><span>{{ name | raw }}</span></div>');
+	self.template = Tangular.compile('<div data-value="{{ value }}" class="item{{ if selected }} selected{{ fi }}"><i class="fa {{ icon }}"></i><span>{{ name | raw }}</span></div>');
 	self.singleton();
 	self.readonly();
 	self.callback = null;
@@ -2319,7 +2220,7 @@ COMPONENT('contextmenu', function() {
 		});
 	};
 
-	self.show = function(orientation, target, items, callback) {
+	self.show = function(orientation, target, items, callback, offsetX) {
 
 		if (is) {
 			clearTimeout(timeout);
@@ -2358,6 +2259,12 @@ COMPONENT('contextmenu', function() {
 		var builder = [];
 		for (var i = 0, length = items.length; i < length; i++) {
 			item = items[i];
+
+			if (typeof(item) === 'string') {
+				builder.push('<div class="divider">{0}</div>'.format(item));
+				continue;
+			}
+
 			item.index = i;
 			if (!item.value)
 				item.value = item.name;
@@ -2383,7 +2290,7 @@ COMPONENT('contextmenu', function() {
 				break;
 		}
 
-		var options = { left: orientation === 'center' ? Math.ceil((offset.left - self.element.width() / 2) + (target.innerWidth() / 2)) : orientation === 'left' ? offset.left - 8 : (offset.left - self.element.width()) + target.innerWidth(), top: offset.top + target.innerHeight() + 10 };
+		var options = { left: orientation === 'center' ? (Math.ceil((offset.left - self.element.width() / 2) + (target.innerWidth() / 2)) + (offsetX || 0)) : orientation === 'left' ? (offset.left - 8 + (offsetX || 0)) : ((offset.left - self.element.width()) + target.innerWidth() + (offsetX || 0)), top: offset.top + target.innerHeight() + 10 };
 		self.css(options);
 
 		if (is)
