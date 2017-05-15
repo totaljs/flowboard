@@ -1,0 +1,28 @@
+<script type="text/html" settings>
+<div class="padding center">
+	<p>@(Upload your design of your home or industry park. The image will be used 1:1 ratio.)<br /><i class="fa fa-folder-o mr5"></i><b>@(Click on the picture below for new upload.)</b></p>
+</div>
+<div data-jc="imageupload" data-jc-path="src" data-url="/api/upload/"></div>
+</script>
+
+<script type="text/html" body>
+	<img src="" alt="" border="0" />
+</script>
+
+<!-- DECLARATION -->
+<script>
+exports.name = 'design';
+exports.title = 'Design';
+exports.icon = 'fa-object-group';
+exports.author = 'Peter Širka';
+exports.group = 'Common';
+exports.options = { src: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAADPBAMAAAApPpppAAAABGdBTUEAALGPC/xhBQAAAAFzUkdCAK7OHOkAAAASUExURfSsAAAAAHhVABgRAO6oALeBAI+BlaQAAAFPSURBVHja7d1RboJAFEBRaF1ARzcgtguQrqBxBU33vxg/iQlmMD58oz33myFzAv68CHSdJEmSJEmSJD2qvtQCAQF5OshpLDF9/+RChhLVPhcyhkGOuZDyEfQbmTsRSBAk90QgICAgICAgICAgICAgIA1Dbpvr3TUFBAF5IsjmszIW231N66rD54VD5TUgb9UB33ZaNwQNldeAvFf3tpvWjUFD5TUgfanc9X2ZXTd/9MIdgvwvyJWuQO7aIQgICAhIAuTvULaH3xeADHF/WQABAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBiYTc8JzXxcuJQECSAgEBAQEBAeke/2hSLiT/LSAgICAgICAgICAgICAgICAgICAgICAgICAgICBtQeK+h7hax0WQoX3IfhHk1Pwlyf4YqSRJkiRJkiS13RlwAr1nHQ9/EgAAAABJRU5ErkJggg==' };
+exports.version = '1.0.0';
+exports.zindex = 1;
+exports.install = function(instance) {
+	instance.on('options', function(options) {
+		options.src && instance.find('img').attr('src', options.src);
+	});
+	instance.emit('options', instance.options);
+};
+</script>

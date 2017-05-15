@@ -1,0 +1,46 @@
+<script type="text/html" settings>
+<div class="padding npb">
+	<div class="m" data-jc="dropdown" data-jc-path="id" data-required="true" data-source="common.instances" data-source-condition="n => n.component === 'flowboardsocket'" data-empty="">@(Flow instance)</div>
+</div>
+</script>
+
+<script type="text/html" body>
+	<div class="click"><i class="fa fa-plug"></i></div>
+</script>
+
+<style>
+	.fb-socket .click { width: 24px; height: 24px; border-radius: 3px; cursor: pointer; background-color: #E33733; color: white; text-align: center; font-size: 16px; }
+	.fb-socket .on { background-position: 0 0; background-color: #8CC152; }
+</style>
+
+<script>
+exports.name = 'socket';
+exports.title = 'Socket';
+exports.icon = 'fa-plug';
+exports.author = 'Peter Širka';
+exports.group = 'Common';
+exports.options = { id: null };
+exports.version = '1.0.0';
+exports.install = function(instance) {
+
+	var state = 0;
+
+	instance.element.addClass('fb-socket');
+	instance.on('data', function(response) {
+		if (response.id !== instance.options.id)
+			return;
+		state = response.body;
+		instance.switch();
+	});
+
+	instance.switch = function() {
+		instance.options.id && instance.find('.click').toggleClass('on', state === 1);
+	};
+
+	instance.event('click touchend', '.click', function() {
+		!common.draft && instance.options.id && instance.send(instance.options.id, { value: state ? 0 : 1 });
+	});
+
+	instance.switch();
+};
+</script>

@@ -127,6 +127,7 @@ COMPONENT('binder', function() {
 			item.visible && item.element.toggleClass('hidden', item.visible(value) ? false : true);
 			item.html && item.element.html(item.html(value));
 			item.template && item.element.html(item.template(template));
+			item.disabled && item.element.prop('disabled', item.disabled(value) ? false : true);
 		});
 	};
 
@@ -150,6 +151,7 @@ COMPONENT('binder', function() {
 		add && element.addClass(add);
 	}
 
+
 	function decode(val) {
 		return val.replace(/\&\#39;/g, '\'');
 	}
@@ -167,6 +169,7 @@ COMPONENT('binder', function() {
 			var classes = el.attr('data-b-class');
 			var html = el.attr('data-b-html');
 			var visible = el.attr('data-b-visible');
+			var disabled = el.attr('data-b-disabled');
 			var obj = el.data('data-b');
 
 			keys_unique[path] = true;
@@ -178,6 +181,7 @@ COMPONENT('binder', function() {
 				obj.classes = classes ? FN(decode(classes)) : undefined;
 				obj.html = html ? FN(decode(html)) : undefined;
 				obj.visible = visible ? FN(decode(visible)) : undefined;
+				obj.disabled = disabled ? FN(decode(disabled)) : undefined;
 
 				if (obj.html) {
 					var tmp = el.find('script[type="text/html"]');
@@ -469,7 +473,7 @@ COMPONENT('repeater', function() {
 		}
 
 		self.html(builder);
-		recompile && jC.compile();
+		recompile && COMPILE();
 	};
 });
 
@@ -767,7 +771,7 @@ COMPONENT('validation', function() {
 	};
 
 	self.state = function() {
-		var disabled = jC.disabled(path);
+		var disabled = DISABLED(path);
 		if (!disabled && self.evaluate)
 			disabled = !EVALUATE(self.path, self.evaluate);
 		elements.prop({ disabled: disabled });
@@ -778,14 +782,14 @@ COMPONENT('websocket', function() {
 
 	var reconnect_timeout;
 	var self = this;
-	var ws;
-	var url;
+	var ws, url;
+	var queue = [];
 
 	self.online = false;
 	self.readonly();
 
 	self.make = function() {
-		reconnect_timeout = (self.attr('data-reconnect') || '5000').parseInt();
+		reconnect_timeout = (self.attr('data-reconnect') || '2000').parseInt();
 		url = self.attr('data-url');
 		if (!url.match(/^(ws|wss)\:\/\//))
 			url = (location.protocol.length === 6 ? 'wss' : 'ws') + '://' + location.host + (url.substring(0, 1) !== '/' ? '/' : '') + url;
@@ -794,7 +798,10 @@ COMPONENT('websocket', function() {
 	};
 
 	self.send = function(obj) {
-		ws && ws.send(encodeURIComponent(JSON.stringify(obj)));
+		if (ws)
+			ws.send(encodeURIComponent(JSON.stringify(obj)));
+		else
+			queue.push(ws);
 		return self;
 	};
 
@@ -820,9 +827,9 @@ COMPONENT('websocket', function() {
 		var data;
 		try {
 			data = JSON.parse(decodeURIComponent(e.data));
-		} catch (ex) {
-			window.console && console.warn('WebSocket "{0}": {1}'.format(url, ex.toString()));
-			return;
+			self.attr('data-jc-path') && self.set(data);
+		} catch (e) {
+			window.console && console.warn('WebSocket "{0}": {1}'.format(url, e.toString()));
 		}
 		data && EMIT('message', data);
 	}
@@ -830,11 +837,16 @@ COMPONENT('websocket', function() {
 	function onOpen() {
 		self.online = true;
 		EMIT('online', true);
+		var cache = queue.splice(0);
+		cache.waitFor(function(obj, next) {
+			self.send(obj);
+			setTimeout(next, 100);
+		});
 	}
 
 	self.connect = function() {
 		ws && self.close();
-		setTimeout(function() {
+		setTimeout2(self.id, function() {
 			ws = new WebSocket(url);
 			ws.onopen = onOpen;
 			ws.onclose = onClose;
@@ -847,29 +859,315 @@ COMPONENT('websocket', function() {
 COMPONENT('designer', function() {
 
 	var self = this;
-	var svg;
-	var scroller;
-	var moving = { x: 0, y: 0, drag: false };
+	var container, scroller;
+	var moving = { x: 0, y: 0, drag: false, zoom: 1, skip: false, readonly: false };
+	var dragdrop = false;
+	var css = { left: 0, top: 0 };
+	var zoom = 1;
+
+	self.readonly = function(is) {
+		moving.readonly = is === undefined ? !moving.readonly : is;
+		EMIT('designer.readonly', moving.readonly);
+	};
 
 	self.make = function() {
-		self.classes('ui-designer');
-		self.append('<div class="ui-designer-grid"><svg width="4000" height="4000"></svg></div>');
-		svg = self.find('svg');
 		scroller = self.element.parent().parent();
-		svg.on('mousedown mousemove mouseup', function(e) {
-			if (e.type === 'mousemove') {
-				if (!moving.drag)
-					return;
-				var x = moving.x - e.pageX;
-				var y = moving.y - e.pageY;
-				scroller.prop('scrollLeft', x).prop('scrollTop', y);
+		self.classes('ui-designer');
+		self.append('<div class="ui-designer-grid"><section style="width:{0}px;height:{0}px;position:relative;display:block" class="instances"></section>'.format(self.element.width()));
+		container = self.find('.instances');
+
+		container.on('mouseleave', function() {
+			moving.drag = false;
+		});
+
+		$(window).on('keydown', function(e) {
+
+			if (moving.readonly || common.form)
+				return;
+
+			if (e.keyCode === 68 && (e.ctrlKey || e.metaKey) && self.operations.selected) {
+				e.preventDefault();
+				self.operations.duplicate();
 				return;
 			}
 
-			moving.drag = e.type === 'mousedown';
-			moving.x = e.pageX + scroller.prop('scrollLeft');
-			moving.y = e.pageY + scroller.prop('scrollTop');
+			if (e.keyCode === 38)
+				self.operations.move(0, -2, e, 0, -10);
+			else if (e.keyCode === 40)
+				self.operations.move(0, 2, e, 0, 10);
+			else if (e.keyCode === 39)
+				self.operations.move(2, 0, e, 10, 0);
+			else if (e.keyCode === 37)
+				self.operations.move(-2, 0, e, -10, 0);
+
+			if ((e.keyCode !== 8 && e.keyCode !== 46) || !self.operations.selected || self.disabled || (e.target.tagName !== 'BODY' && !$(e.target).hasClass('mainmenu')))
+				return;
+
+			self.operations.remove();
 		});
+
+		container.on('mousedown mousemove mouseup', function(e) {
+			self.movement(e.type, e.pageX, e.pageY, e.target, e);
+		});
+
+		container.on('touchstart touchmove touchend', function(e) {
+
+			var type = e.type === 'touchstart' ? 'mousedown' : e.type === 'touchmove' ? 'mousemove' : 'mouseup';
+			var touches = e.originalEvent.touches;
+			var touch = touches[0];
+
+			if (!touch) {
+				touch = {};
+				touch.pageX = moving.x;
+				touch.pageY = moving.y;
+			}
+
+			e.preventDefault();
+			self.movement(type, touch.pageX, touch.pageY, e.target, e);
+		});
+
+		$(document).on('dragstart', function(e) {
+			if (moving.readonly)
+				return;
+			dragdrop = $(e.target);
+		});
+
+		self.event('dragover dragenter drag drop', '.instances', function(e) {
+			if (moving.readonly || !dragdrop)
+				return;
+			switch (e.type) {
+				case 'dragenter':
+					break;
+				case 'drop':
+					var tmp = $(dragdrop);
+					self.operations.append(GUID(), tmp.attr('data-name'), e.pageX + scroller.prop('scrollLeft'), e.pageY + scroller.prop('scrollTop'), EMPTYOBJECT);
+					break;
+			}
+			e.preventDefault();
+		});
+	};
+
+	function getResizable(el) {
+		var is = el.hasClass('resizable');
+		if (is)
+			return el;
+
+		for (var i = 0; i < 5; i++) {
+			el = el.parent();
+			if (el.hasClass('resizable'))
+				return el;
+		}
+		return null;
+	}
+
+	self.movement = function(type, pageX, pageY, target, e) {
+
+		if (type === 'mousemove') {
+			if (!moving.drag)
+				return;
+			moving.skip = true;
+			if (moving.element && !moving.element.hasClass('locked')) {
+				css.left = (pageX + scroller.prop('scrollLeft')) - moving.offsetX;
+				css.top = (pageY + scroller.prop('scrollTop')) - moving.offsetY;
+				moving.element.css(css);
+			} else
+				scroller.prop('scrollLeft', moving.x - pageX).prop('scrollTop', moving.y - pageY);
+			return;
+		}
+
+		var element = $(target);
+		var now = Date.now();
+
+		e.preventDefault();
+
+		moving.drag = type === 'mousedown';
+		moving.element = moving.readonly || target.tagName === 'SECTION' || element.hasClass('instances') ? null : element.hasClass('component') ? element : element.closest('figure.component');
+
+		moving.drag && SETTER('controls', 'hide');
+
+		var resizable = getResizable(element);
+
+		if (moving.drag && !moving.readonly) {
+			if (!resizable || (moving.resizable && moving.resizable.get(0) === resizable.get(0)))
+				moving.resizable = null;
+			else if (resizable)
+				moving.resizable = resizable;
+
+			EMIT('designer.resizable', moving.resizable, moving.element);
+		}
+
+		// Double click
+		if (moving.element && moving.drag && moving.timestamp && moving.timestampelement && moving.timestampelement === moving.element.get(0)) {
+			var tmp = now - moving.timestamp;
+			if (tmp > 50 && tmp < 120) {
+				EMIT('designer.settings', moving.element, moving.element.get(0).$instance);
+				return;
+			}
+		}
+
+		moving.timestamp = now;
+		moving.timestampelement = moving.element ? moving.element.get(0) : null;
+
+		if (moving.element && !moving.element.hasClass('locked')) {
+			var position = moving.element.getPosition();
+			var off = moving.element.offset();
+			moving.offsetX = e.pageX - off.left;
+			moving.offsetY = e.pageY - off.top;
+			moving.x = position.x;
+			moving.y = position.y;
+			EMIT('designer.change', true);
+		} else {
+			moving.x = pageX + scroller.prop('scrollLeft');
+			moving.y = pageY + scroller.prop('scrollTop');
+		}
+
+		if (self.operations.selected && !moving.element) {
+			self.operations.selected.removeClass('selected');
+			self.operations.selected = null;
+		}
+
+		if (moving.drag && moving.element) {
+
+			var tmp = element.closest('.component');
+			if (self.operations.selected && tmp.get(0) === self.operations.selected.get(0))
+				return;
+
+			if (self.operations.selected) {
+				moving.drag = false;
+				self.operations.selected.removeClass('selected');
+			}
+
+			tmp.length && (self.operations.selected = tmp.addClass('selected'));
+			EMIT('designer.selected', tmp.length ? tmp : null);
+		}
+	};
+
+	self.operations = {};
+
+	self.operations.save = function() {
+		var arr = [];
+		self.find('figure.component').each(function() {
+			var el = $(this);
+			var instance = el.get(0).$instance;
+			var position = el.getPosition();
+			var obj = {};
+			obj.id = instance.id;
+			obj.name = instance.name;
+			obj.options = instance.options;
+			obj.x = position.x;
+			obj.y = position.y;
+			arr.push(obj);
+		});
+		return arr;
+	};
+
+	self.operations.load = function(data) {
+		container.empty();
+		data.forEach(function(item) {
+			self.operations.append(item.id, item.name, item.x, item.y, item.options, true);
+		});
+		EMIT('designer.change', false);
+		return self;
+	};
+
+	self.operations.duplicate = function() {
+		var el = self.operations.selected;
+		var instance = el.get(0).$instance;
+		var options = CLONE(instance.options);
+		var position = el.getPosition();
+		self.operations.append(GUID(), el.attr('data-name'), position.x + 50, position.y + 50, options);
+		self.operations.selected.removeClass('selected');
+		self.operations.selected = null;
+		return self;
+	};
+
+	self.operations.move = function(x, y, e, offsetX, offsetY) {
+
+		!e.shiftKey && (offsetX = 0);
+		!e.shiftKey && (offsetY = 0);
+		e.preventDefault();
+
+		if (self.operations.selected && !moving.readonly) {
+			var position = self.operations.selected.getPosition();
+			css.left = position.x + x + offsetX;
+			css.top = position.y + y + offsetY;
+			self.operations.selected.css(css);
+			return;
+		}
+
+		self.find('.component').each(function() {
+			var el = $(this);
+			var position = el.getPosition();
+			css.left = position.x + x + offsetX;
+			css.top = position.y + y + offsetY;
+			el.css(css);
+		});
+	};
+
+	self.operations.remove = function() {
+		if (self.operations.selected) {
+			EMIT('designer.remove', self.operations.selected, self.operations.selected.get(0).$instance);
+			self.operations.selected = null;
+		}
+		return self;
+	};
+
+	self.operations.lock = function(value) {
+		if (self.operations.selected) {
+			if (value === undefined)
+				value = !self.operations.selected.hasClass('locked');
+			self.operations.selected.toggleClass('locked', value);
+			EMIT('designer.selected', self.operations.selected);
+		}
+		return self;
+	};
+
+	self.operations.upgrade = function(component) {
+		component && component.name && self.find('figure[name="{0}"]'.format(component.name)).each(function() {
+			var instance = this.$instance;
+			instance.emit('destroy');
+			component.html && instance.element.append(component.html);
+			instance.element.html(component.html);
+			this.$instance = new Instance(instance.id, instance.element, component, instance.options);
+			component.html && component.html.indexOf('data-jc') !== -1 && COMPILE(instance.element);
+		});
+		return self;
+	};
+
+	self.operations.append = function(id, name, x, y, options, load) {
+		var component = common.database.findItem('name', name);
+		if (!component)
+			return false;
+
+		var template = '<figure data-jc-scope="scope{0}" class="component" data-id="{0}" data-name="{1}" style="left:{2}px;top:{3}px;position:absolute;z-index:{4}"></div>'.format(id, name, x, y, component.zindex || 5);
+
+		if (component.zindex === 0)
+			container.prepend(template);
+		else
+			container.append(template);
+
+		var figure = container.find('[data-id="{0}"]'.format(id));
+		component.html && figure.append(component.html);
+
+		var instance = new Instance(id, figure, component, options);
+		figure.get(0).$instance = instance;
+		component.html && component.html.indexOf('data-jc') !== -1 && COMPILE(figure);
+		!load && EMIT('designer.change', true);
+		EMIT('designer.append', instance);
+		return true;
+	};
+
+	self.operations.zoom = function(value) {
+
+		if (value === '+')
+			zoom += 0.08;
+		else if (value === '-')
+			zoom -= 0.08;
+		else
+			zoom = 1;
+
+		self.element.parent().css('transform', 'scale({0})'.format(zoom));
+		return self;
 	};
 
 });
@@ -1242,8 +1540,7 @@ COMPONENT('dropdown', function() {
 
 	var self = this;
 	var isRequired = self.attr('data-required') === 'true';
-	var select;
-	var container;
+	var select, container, condition;
 
 	self.validate = function(value) {
 
@@ -1289,6 +1586,8 @@ COMPONENT('dropdown', function() {
 
 		for (var i = 0, length = arr.length; i < length; i++) {
 			var item = arr[i];
+			if (condition && !condition(item))
+				continue;
 			if (item.length)
 				builder.push(template.format(item, value === item ? ' selected="selected"' : '', item));
 			else
@@ -1312,6 +1611,10 @@ COMPONENT('dropdown', function() {
 		var label = self.html();
 		var html = '<div class="ui-dropdown"><span class="fa fa-sort"></span><select data-jc-bind="">{0}</select></div>'.format(options.join(''));
 		var builder = [];
+
+		condition = self.attr('data-source-condition');
+		if (condition)
+			condition = FN(condition);
 
 		if (label.length) {
 			var icon = self.attr('data-icon');
@@ -2270,14 +2573,17 @@ COMPONENT('contextmenu', function() {
 				item.value = item.name;
 			if (!item.icon)
 				item.icon = 'fa-caret-right';
-			builder.push(self.template(item));
+
+			var tmp = self.template(item);
+			if (item.url)
+				tmp = tmp.replace('<div', '<a href="{0}" target="_blank"'.format(item.url)).replace(/div>$/g, 'a>');
+
+			builder.push(tmp);
 		}
 
 		self.target = target.get(0);
 		var offset = target.offset();
-
 		container.html(builder);
-
 		switch (orientation) {
 			case 'left':
 				arrow.css({ left: '15px' });
@@ -2428,7 +2734,7 @@ COMPONENT('disable', function() {
 				el.toggleClass('ui-disabled', is);
 		});
 
-		validate && validate.forEach(FN('n => jC.reset({0}n)'.format(self.pathscope ? '\'' + self.pathscope + '.\'+' : '')));
+		validate && validate.forEach(FN('n => RESET({0}n)'.format(self.pathscope ? '\'' + self.pathscope + '.\'+' : '')));
 	};
 
 	self.state = function() {
@@ -2607,5 +2913,363 @@ COMPONENT('nosqlcounter', function() {
 		});
 
 		self.html(builder);
+	};
+});
+
+COMPONENT('fileupload', function() {
+
+	var self = this;
+
+	self.readonly();
+
+	self.make = function() {
+		var id = 'fileupload' + self.id;
+		var accept = self.attr('data-accept');
+		var multiple = self.attr('data-multiple');
+
+		$(document.body).append('<input type="file" id="{0}" class="hidden"{1}{2} />'.format(id, accept ? ' accept="{0}"'.format(accept) : '', multiple ? ' multiple="multiple"' : ''));
+
+		var input = $('#' + id);
+
+		self.event('click', function() {
+			input.click();
+		});
+
+		input.on('change', function(evt) {
+
+			var files = evt.target.files;
+			var data = new FormData();
+			var el = this;
+
+			for (var i = 0, length = files.length; i < length; i++)
+				data.append('file' + i, files[i]);
+
+			SETTER('loading', 'show');
+			UPLOAD(self.attr('data-url'), data, function(response, err) {
+
+				el.value = '';
+				SETTER('loading', 'hide', 500);
+
+				if (err) {
+					SETTER('message', 'warning', self.attr('data-error') || err.toString());
+					return;
+				}
+
+				self.change();
+
+				if (self.attr('data-array') === 'true')
+					self.push(response);
+				else
+					self.set(response);
+			});
+		});
+	};
+});
+
+COMPONENT('range', function() {
+	var self = this;
+	var required = self.attr('data-required');
+
+	self.noValid();
+
+	self.make = function() {
+		var name = self.html();
+		if (name)
+			name = '<div class="ui-range-label{1}">{0}:</div>'.format(name, required ? ' ui-range-label-required' : '');
+		var attrs = [];
+		attrs.attr('step', self.attr('data-step'));
+		attrs.attr('max', self.attr('data-max'));
+		attrs.attr('min', self.attr('data-min'));
+		self.classes('ui-range');
+		self.html('{0}<input type="range" data-jc-bind=""{1} />'.format(name, attrs.length ? ' ' + attrs.join(' ') : ''));
+	};
+});
+
+COMPONENT('audio', function() {
+	var self = this;
+	var can = false;
+	var volume = 0.5;
+
+	self.items = [];
+	self.readonly();
+	self.singleton();
+
+	self.make = function() {
+		var audio = document.createElement('audio');
+		if (audio.canPlayType && audio.canPlayType('audio/mpeg').replace(/no/, ''))
+			can = true;
+	};
+
+	self.play = function(url) {
+
+		if (!can)
+			return;
+
+		var audio = new window.Audio();
+
+		audio.src = url;
+		audio.volume = volume;
+		audio.play();
+
+		audio.onended = function() {
+			audio.$destroy = true;
+			self.cleaner();
+		};
+
+		audio.onerror = function() {
+			audio.$destroy = true;
+			self.cleaner();
+		};
+
+		audio.onabort = function() {
+			audio.$destroy = true;
+			self.cleaner();
+		};
+
+		self.items.push(audio);
+		return self;
+	};
+
+	self.cleaner = function() {
+		var index = 0;
+		while (true) {
+			var item = self.items[index++];
+			if (item === undefined)
+				return self;
+			if (!item.$destroy)
+				continue;
+			item.pause();
+			item.onended = null;
+			item.onerror = null;
+			item.onsuspend = null;
+			item.onabort = null;
+			item = null;
+			index--;
+			self.items.splice(index, 1);
+		}
+	};
+
+	self.stop = function(url) {
+
+		if (!url) {
+			self.items.forEach(function(item) {
+				item.$destroy = true;
+			});
+			return self.cleaner();
+		}
+
+		var index = self.items.findIndex('src', url);
+		if (index === -1)
+			return self;
+		self.items[index].$destroy = true;
+		return self.cleaner();
+	};
+
+	self.setter = function(value) {
+
+		if (value === undefined)
+			value = 0.5;
+		else
+			value = (value / 100);
+
+		if (value > 1)
+			value = 1;
+		else if (value < 0)
+			value = 0;
+
+		volume = value ? +value : 0;
+		for (var i = 0, length = self.items.length; i < length; i++) {
+			var a = self.items[i];
+			if (!a.$destroy)
+				a.volume = value;
+		}
+	};
+});
+
+COMPONENT('imageupload', function() {
+
+	var self = this;
+	var input, last, format;
+
+	self.noValid();
+
+	self.make = function() {
+
+		format = self.attr('data-format') || '/download/{0}';
+		var id = 'imageupload' + self.id;
+
+		self.classes('ui-imageupload');
+		self.html('<img src="/img/themedark.png" alt="" class="img-responsive" />');
+		$(document.body).append('<input type="file" id="{0}" class="hidden" accept="image/*" />'.format(id));
+
+		input = $('#' + id);
+
+		self.event('click', function() {
+			input.click();
+		});
+
+		input.on('change', function(evt) {
+
+			var files = evt.target.files;
+			var data = new FormData();
+			var el = this;
+
+			data.append('data', files[0]);
+
+			SETTER('loading', 'show');
+			UPLOAD(self.attr('data-url'), data, function(response, err) {
+				SETTER('loading', 'hide', 1000);
+				if (err) {
+					var message = FIND('message');
+					if (message)
+						message.warning(self.attr('data-upload-error') || err.toString());
+					else
+						alert(self.attr('data-upload-error') || err.toString());
+				} else {
+					el.value = '';
+					self.set(format.format(response[0]));
+					self.change(true);
+				}
+			});
+		});
+	};
+
+	self.setter = function(value) {
+		if (last === value)
+			return;
+		last = value;
+		self.find('img').attr('src', value);
+	};
+});
+
+COMPONENT('controls', function() {
+
+	var self = this;
+	var is = false;
+	var timeout;
+	var container;
+
+	self.template = Tangular.compile('<div data-value="{{ index }}" class="item{{ if selected }} selected{{ fi }}{{ if disabled }} disabled{{ fi }}"><i class="fa {{ icon }}"></i><span>{{ name | raw }}</span></div>');
+	self.singleton();
+	self.readonly();
+	self.callback = null;
+
+	self.make = function() {
+
+		self.classes('ui-controls');
+		self.append('<div class="ui-controls-items"></div>');
+		container = self.find('.ui-controls-items');
+
+		self.event('touchstart mousedown', 'div[data-value]', function(e) {
+			var el = $(this);
+			!el.hasClass('disabled') && self.callback && self.callback(self.items[+el.attr('data-value')], $(self.target));
+			self.hide();
+			e.preventDefault();
+			e.stopPropagation();
+		});
+
+		$(document).on('touchstart mousedown', function() {
+			SETTER('controls', 'hide');
+		});
+	};
+
+	self.show = function(target, items, callback, offsetX) {
+
+		if (is) {
+			clearTimeout(timeout);
+			var obj = target instanceof jQuery ? target.get(0) : target;
+			if (self.target === obj) {
+				self.hide(0);
+				return;
+			}
+		}
+
+		target = $(target);
+		var type = typeof(items);
+		var item;
+
+		if (type === 'string')
+			items = self.get(items);
+		else if (type === 'function') {
+			callback = items;
+			items = (target.attr('data-options') || '').split(';');
+			for (var i = 0, length = items.length; i < length; i++) {
+				item = items[i];
+				if (!item)
+					continue;
+				var val = item.split('|');
+				items[i] = { name: val[0], icon: val[1], value: val[2] === undefined ? val[0] : val[2] };
+			}
+		}
+
+		if (!items) {
+			self.hide(0);
+			return;
+		}
+
+
+		self.callback = callback;
+		self.items = items;
+
+		var builder = [];
+
+		for (var i = 0, length = items.length; i < length; i++) {
+			item = items[i];
+
+			if (typeof(item) === 'string') {
+				builder.push('<div class="clearfix"></div><div class="divider"{1}>{0}</div>'.format(item, i === 0 ? ' style="margin-top:0"' : ''));
+				continue;
+			}
+
+			item.index = i;
+			if (item.value === undefined)
+				item.value = item.name;
+			if (!item.icon)
+				item.icon = 'fa-caret-right';
+
+			var tmp = self.template(item);
+			if (item.url)
+				tmp = tmp.replace('<div', '<a href="{0}" target="_blank"'.format(item.url)).replace(/div>$/g, 'a>');
+
+			builder.push(tmp);
+		}
+
+		builder.push('<div class="clearfix"></div>');
+
+		self.target = target.get(0);
+		var offset = target.offset();
+		var scroller = $('.designer-scroll');
+
+		offset.left += scroller.scrollLeft();
+		offset.top += scroller.scrollTop();
+
+		container.html(builder);
+
+		var options = { left: (offset.left - 8 + (offsetX || 0)), top: offset.top + target.innerHeight() + 10 };
+		self.css(options);
+
+		if (is)
+			return;
+
+		self.element.show();
+		setTimeout(function() {
+			self.classes('ui-controls-visible');
+			self.emit('controls', true, self, self.target);
+		}, 100);
+
+		is = true;
+	};
+
+	self.hide = function(sleep) {
+		if (!is)
+			return;
+		clearTimeout(timeout);
+		timeout = setTimeout(function() {
+			self.element.hide().removeClass('ui-controls-visible');
+			self.emit('controls', false, self, self.target);
+			self.callback = null;
+			self.target = null;
+			is = false;
+		}, sleep ? sleep : 100);
 	};
 });

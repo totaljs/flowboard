@@ -1,0 +1,74 @@
+<script type="text/html" settings>
+<div class="padding npb">
+	<div class="m" data-jc="dropdown" data-jc-path="id" data-required="true" data-source="common.instances" data-source-condition="n => n.component === 'flowboardlight'" data-empty="">@(Flow instance)</div>
+</div>
+</script>
+
+<script type="text/html" body>
+	<div class="resizable click">
+		<div><i class="fa fa-lightbulb-o"></i></div>
+	</div>
+</script>
+
+<style type="text/css">
+	.fb-light > div { transition: all 0.5s; font-size: 30px; color: gray; width: 50px; height: 50px; border-radius: 4px; background-color: rgba(100,100,100,0.5); cursor: pointer; }
+	.draft .fb-light > div { border: 2px solid red; }
+	.draft .fb-light.selected > div { border-color: yellow; }
+	.fb-light .resizable { display: table; }
+	.fb-light .resizable > div { display: table-cell; vertical-align: middle; text-align: center; }
+	.fb-light .on { background: radial-gradient(ellipse at center, rgba(255,234,0,1) 0%, #FFCE54 100%); color: #F6BB42 !important; }
+</style>
+
+<script>
+exports.name = 'light';
+exports.title = 'Light';
+exports.icon = 'fa-lightbulb-o';
+exports.author = 'Peter Širka';
+exports.group = 'Common';
+exports.version = '1.0.0';
+exports.options = { width: 50, height: 50, rotation: 0 };
+exports.install = function(instance) {
+
+	var state = 0;
+
+	instance.element.addClass('fb-light');
+	instance.on('data', function(response) {
+		if (response.id !== instance.options.id)
+			return;
+		state = response.body;
+		instance.switch();
+	});
+
+
+	instance.on('options', function(options) {
+		var css = { width: options.width + 'px', height: options.height + 'px' };
+
+		if (options.rotation)
+			css.transform = 'rotate(' + options.rotation + 'deg)';
+		else
+			css.transform = 'inherit';
+
+		css['font-size'] = (options.width / 2)+ 'px';
+		instance.element.find('.click').css(css);
+	});
+
+	instance.switch = function() {
+		instance.options.id && instance.find('.click').toggleClass('on', state === 1);
+	};
+
+	instance.event('click touchend', '.click', function() {
+		!common.draft && instance.options.id && instance.send(instance.options.id, { value: state ? 0 : 1 });
+	});
+
+	instance.on('resize', function(element, width, height, rotation) {
+		instance.options.width = width;
+		instance.options.height = height;
+		instance.options.rotation = rotation;
+		instance.element.find('.click').css('font-size', (width / 2) + 'px');
+	});
+
+	instance.emit('options', instance.options);
+	instance.switch();
+};
+
+</script>

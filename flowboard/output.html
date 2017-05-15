@@ -1,0 +1,37 @@
+<script type="text/html" settings>
+	<div class="padding">
+		<div class="m" data-jc="dropdown" data-jc-path="id" data-required="true" data-source="common.instances" data-source-condition="n => n.component === 'flowboardoutput'" data-empty="">@(Flow instance)</div>
+		<div class="row">
+			<div class="col-md-3 m">
+				<div data-jc="textbox" data-jc-path="size" data-required="true" data-jc-type="number" data-increment="true" data-align="center">@(Size of font)</div>
+			</div>
+		</div>
+	</div>
+</script>
+
+<script type="text/html" body>
+	<div>...</div>
+</script>
+
+<script>
+exports.name = 'output';
+exports.title = 'Output';
+exports.icon = 'fa-commenting';
+exports.author = 'Peter Širka';
+exports.group = 'Common';
+exports.options = { size: 14 };
+exports.version = '1.0.0';
+exports.install = function(instance) {
+
+	instance.element.addClass('fb-output');
+	instance.on('data', function(response) {
+		response.id === instance.options.id && instance.element.html(response.body);
+	});
+
+	instance.on('options', function(options) {
+		options.size && instance.element.css('font-size', options.size + 'px');
+	});
+
+	instance.emit('options', instance.options);
+};
+</script>

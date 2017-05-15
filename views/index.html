@@ -13,18 +13,17 @@
 	<meta name="apple-mobile-web-app-status-bar-style" content="#A0A0A0" />
 	<meta name="apple-mobile-web-app-title" content="@{config.name}" />
 	<link rel="apple-touch-icon" href="/icon.png" />
-	<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
-    <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Source+Sans+Pro:400,200,700&subset=latin,latin-ext" />
-    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/styles/github.min.css" />
 	@{import('head', 'default.css', 'favicon.ico')}
 	<script>var user = JSON.parse('@{json(user)}');user = {};user.sa = true;</script>
 </head>
-<body data-jc="exec,binder">
+<body data-jc="exec,binder" class="themedark">
 
 	<div data-jc="message" data-button="@(Close)"></div>
 	<div data-jc="confirm"></div>
 	<div data-jc="contextmenu"></div>
 	<div data-jc="loading"></div>
+	<div data-jc="websocket" data-url="/"></div>
+	<div data-jc="audio" data-jc-path="common.volume"></div>
 
 	<div data-jc="resource">
 		<script type="text/plain">
@@ -35,30 +34,155 @@
 	</div>
 
 	<a href="javascript:void(0)" data-exec="mainmenu" class="mainmenu exec"><i class="fa fa-navicon"></i></a>
+
+	<section class="resizable-container">
+		<div data-jc="checkbox" data-jc-path="common.resizable.lock">@(Constrain proportions)</div>
+		<hr />
+		<div data-b="common.resizable.lock" data-b-visible="n => !n">
+			<div class="m" data-jc-keypress="true" data-jc="range" data-jc-path="common.resizable.width" data-max="800" data-min="1" data-step="1" data-jc-type="number">@(Width)</div>
+			<div class="m" data-jc-keypress="true" data-jc="range" data-jc-path="common.resizable.height" data-max="800" data-min="1" data-step="1" data-jc-type="number">@(Height)</div>
+		</div>
+		<div data-b="common.resizable.lock" data-b-visible="n => n">
+			<div class="m" data-jc-keypress="true" data-jc="range" data-jc-path="common.resizable.size" data-max="800" data-min="1" data-step="1" data-jc-type="number">@(Width / Height)</div>
+		</div>
+		<div data-jc-keypress-only="true" data-jc="range" data-jc-path="common.resizable.rotation" data-max="180" data-min="-180" data-step="1" data-jc-type="number">@(Rotate)</div>
+	</section>
+
+	<section class="zoom-container">
+		<nav>
+			<button class="exec" data-exec="zoom_in"><i class="fa fa-search-plus"></i></button>
+			<button class="exec" data-exec="zoom_reset"><i class="fa fa-unsorted"></i></button>
+			<button class="exec" data-exec="zoom_out"><i class="fa fa-search-minus"></i></button>
+		</nav>
+	</section>
+
+	<section class="controls-container">
+		<nav>
+			<button class="exec" data-exec="designer_duplicate" data-b="common.selected" data-b-disabled="n => n" disabled="disabled"><i class="fa fa-copy"></i></button>
+			<button class="exec" data-exec="designer_remove" data-b="common.selected" data-b-disabled="n => n" disabled="disabled"><i class="fa fa-times"></i></button>
+			<button class="exec" data-exec="designer_lock" data-b="common.selected" data-b-disabled="n => n"><i data-b="common.selected" data-b-class="n => n && n.hasClass('locked') ? '+fa-lock -fa-unlock' : '+fa-unlock -fa-lock'" class="fa fa-lock"></i></button>
+			<button class="exec" data-exec="components_scrollleft"><i class="fa fa-caret-left"></i></button>
+			<button class="exec" data-exec="components_scrollright"><i class="fa fa-caret-right"></i></button>
+		</nav>
+	</section>
+
 	<section class="components-container">
 		<div class="components-scroller">
-			<div id="components">
-				<span class="component" draggable="true"><i class="fa fa-map"></i>Map</span>
-				<span class="component" draggable="true"><i class="fa fa-window-maximize"></i>Window</span>
-				<span class="component" draggable="true"><i class="fa fa-lock"></i>Door</span>
+			<div id="components" data-jc="repeater" data-jc-path="common.database">
+				<script type="text/html">
+					<span class="component" draggable="true" data-name="{{ name }}"><i class="fa {{ icon }}"></i>{{ title }}</span>
+				</script>
 			</div>
 		</div>
 	</section>
+
 	<div class="designer-container">
 		<div class="designer-scroll">
 			<div class="designer">
+				<div data-jc="controls"></div>
 				<div data-jc="designer"></div>
 			</div>
 		</div>
 	</div>
 
-	<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-	<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/highlight.min.js"></script>
+	<div id="flowboardsettings"></div>
+	<div data-jc="importer" data-jc-path="common.form" data-if="value === 'database'" data-url="/templates/form-database.html" data-reload="formdatabase_reload"></div>
+	<div data-jc="importer" data-jc-path="common.form" data-if="value === 'tab'" data-url="/templates/form-tab.html"></div>
 
 	@{import('default.js')}
 	@{place('scripts')}
 
 	<script>
+
+		common.draggable = {};
+		common.draft = false;
+
+		common.resizable = {};
+		common.resizable.width = 100;
+		common.resizable.height = 100;
+		common.resizable.rotation = 0;
+		common.resizable.lock = true;
+		common.volume = 1;
+
+		CACHEPATH('common.theme', '1 year');
+
+		WATCH('common.theme', function(path, value) {
+			var body = $(document.body);
+			var cls = body.attr('class').match(/theme\w+/g);
+			cls && body.removeClass(cls.toString());
+			value && body.addClass('theme' + value);
+		}, true);
+
+		function centerize() {
+			var w = $(window);
+			var el = $('.designer-scroll');
+			var container = $('.designer');
+			el.scrollLeft((container.width() / 2) - (w.width() / 2));
+			el.scrollTop((container.height() / 2) - (w.height() / 2));
+		}
+
+		centerize();
+
+		WATCH('common.draft', function(path, value) {
+			$('body').toggleClass('draft', value === true);
+			SETTER(true, 'designer', 'readonly', value !== true);
+		}, true);
+
+		var URL = '/api';
+
+		ON('online', function(is) {
+			SETTER('loading', is ? 'hide' : 'show', is ? 1000 : 0);
+		});
+
+		ON('message', function(data) {
+			switch (data.type) {
+				case 'instances':
+					SET('common.instances', data.body);
+					break;
+				case 'component':
+					common.operations.append(data.body, data.dateupdated);
+					break;
+				case 'designer':
+					common.backup = CLONE(data.body);
+					FIND('designer').operations.load(data.body);
+					break;
+				case 'loaded':
+					UPDATE('common.database');
+					break;
+				case 'data':
+					data.type = undefined;
+					common.operations.emit('data', data);
+					break;
+			}
+		});
+
+		WATCH('common.resizable.*', function(path, value) {
+
+			if (path === 'common.resizable.lock') {
+				if (value.lock) {
+					common.resizable.size = common.resizable.width;
+				} else {
+					common.resizable.width = common.resizable.size;
+					common.resizable.height = common.resizable.size;
+				}
+				common.resizable.skipbind = true;
+				UPDATE('common.resizable');
+				return;
+			}
+
+			if (common.resizable.skipbind) {
+				common.resizable.skipbind = false;
+				return;
+			}
+
+			if (common.resizable.lock) {
+				common.resizable.width = common.resizable.size;
+				common.resizable.height = common.resizable.size;
+			}
+
+			common.resizable.element.setPosition(value);
+			common.resizable.instance.emit('resize', common.resizable.element, common.resizable.width, common.resizable.height, common.resizable.rotation);
+		});
 
 		function mainmenu(el) {
 
@@ -67,7 +191,15 @@
 
 			items.push('@(Flowboard)');
 			items.push({ name: '@(Database)', icon: 'fa-database', value: 'database' });
+
+			if (common.draft) {
+				items.push({ name: '@(Save changes)', icon: 'fa-floppy-o', value: 'save' });
+				items.push({ name: '@(Restore changes)', icon: 'fa-refresh', value: 'restore' });
+			} else
+				items.push({ name: '@(Edit mode)', icon: 'fa-object-group', value: 'edit' });
+
 			items.push({ name: '@(Clear desktop)', icon: 'fa-trash-o', value: 'clear' });
+			items.push({ name: '@(Toggle dark theme)', icon: 'fa-paint-brush', value: 'theme' });
 
 			if (common.page === 'dashboard' && device !== 'xs' && dashboard.current) {
 				var mode = FIND('dashboard').getMode();
@@ -76,22 +208,171 @@
 			}
 
 			@{if helpers.FLOW}
-			user.sa && items.push({ name: '@(Flow)', icon: 'fa-sitemap', value: 'flow' });
+			user.sa && items.push({ name: '<b>@(Open Flow designer)</b>', icon: 'fa-sitemap', url: '/$flow/' });
 			@{fi}
 
-			FIND('contextmenu').show(device === 'xs' ? 'center' : 'left', el, items, function(value) {
+			FIND('contextmenu').show('left', el, items, function(value) {
 				switch (value) {
 					@{if helpers.FLOW}
 					case 'flow':
 						location.href = '@{helpers.FLOW.url}';
 						break;
 					@{fi}
+					case 'edit':
+						SET('common.draft', true);
+						break;
+					case 'restore':
+						SET('common.draft', false);
+						FIND('designer').operations.load(common.backup);
+						break;
+					case 'clear':
+						FIND('designer').operations.load([]);
+						break;
 					case 'database':
-						EMIT('database');
+						SET('common.form', 'database');
+						break;
+					case 'theme':
+						themechanger();
+						break;
+					case 'save':
+						SETTER('confirm', 'confirm', '@(Are you sure you want to save a current state?)', ['@(Yes)', '@(Cancel)'], function(index) {
+							if (index)
+								return;
+							var obj = {};
+							obj.type = 'save';
+							obj.body = {};
+							obj.body.type = 'designer';
+							obj.body.body = FIND('designer').operations.save();
+							common.backup = CLONE(obj.body.body);
+							SETTER('websocket', 'send', obj);
+							SET('common.draft', false);
+						});
 						break;
 				}
-			}, device === 'xs' ? 5 : -3);
+			}, -3);
 		}
+
+		ON('designer.selected', function(el) {
+			SET('common.selected', el);
+		});
+
+		ON('designer.remove', function(el) {
+			SETTER('confirm', 'confirm', '@(Are you sure you want to remove selected component?)', ['@(Yes)', '@(Cancel)'], function(index) {
+				if (index)
+					return;
+				el.remove();
+				EMIT('designer.resizable', null);
+			});
+		});
+
+		ON('designer.resizable', function(element, component) {
+
+			if (element) {
+				var pos = element.getPosition(true);
+				common.resizable.width = pos.width;
+				common.resizable.height = pos.height;
+				common.resizable.size = pos.width;
+				common.resizable.lock = false;
+				common.resizable.rotation = pos.rotation || 0;
+				common.resizable.instance = component.get(0).$instance;
+				common.resizable.element = element;
+				common.resizable.skipbind = true;
+				UPDATE('common.resizable');
+			}
+
+			var el = $('.resizable-container');
+			el.toggleClass('resizable-container-visible', element ? true : false);
+		});
+
+		ON('designer.settings', function(el, instance) {
+			instance.settings();
+		});
+
+		$(document).on('touchstart touchmove touchend', '[draggable]', function(e) {
+
+			e.preventDefault();
+
+			if (e.type === 'touchstart') {
+				common.draggable.element = $(e.target).closest('.component');
+				return;
+			}
+
+			if (e.type === 'touchmove') {
+				var touch = e.originalEvent.touches[0];
+				common.draggable.x = touch.pageX;
+				common.draggable.y = touch.pageY;
+				return;
+			}
+
+			if (e.type === 'touchend') {
+				var scroller = $('.designer-scroll');
+				FIND('designer').operations.append(GUID(), common.draggable.element.attr('data-name'), common.draggable.x + scroller.prop('scrollLeft'), common.draggable.y + scroller.prop('scrollTop'), EMPTYOBJECT);
+				return;
+			}
+		});
+
+		function staticContent(instance, callback) {
+
+			if (common.statics[instance.name]) {
+				callback(true);
+				return;
+			}
+
+			common.statics[instance.name] = true;
+			COMPILE($('#flowboardsettings').append('<div data-jc-id="html.{0}" data-jc="form" data-title="@(Settings:) {0}" data-jc-path="common.form" data-if="value === \'settings-{0}\'" data-width="800px" class="hidden"><div data-jc-scope="settings.{0}">{1}<div class="ui-form-buttons"><div class="help nmt" style="margin-bottom:5px">@(The options will be applied immediately.)</div><div data-jc="validation" data-jc-path="?" style="width:100%"><button class="exec" data-exec="#settings" disabled="disabled" style="width:100%">@(APPLY SETTINGS)</button></div></div></div></div>'.format(instance.name, common.database.findItem('name', instance.name).settings || '<br /><div class="ui-center padding gray"><i class="fa fa-ban mr5"></i>@(No advanced configuration.)</div><br />')));
+			callback(false);
+		}
+
+		OPERATION('settings', function() {
+			var target = FIND('designer').operations.selected;
+			var instance = target.get(0).$instance;
+			var options = settings[instance.name];
+			var old = instance.options;
+			instance.options = options;
+			instance.emit('options', options, old);
+			SET('common.form', '');
+		});
+
+		function designer_duplicate() {
+			FIND('designer').operations.duplicate();
+		}
+
+		function designer_remove() {
+			FIND('designer').operations.remove();
+		}
+
+		function designer_lock() {
+			FIND('designer').operations.lock();
+		}
+
+		function components_scrollleft() {
+			$('.components-scroller').stop().animate({ scrollLeft: '-=200px' }, 100);
+		}
+
+		function components_scrollright() {
+			$('.components-scroller').stop().animate({ scrollLeft: '+=200px' }, 100);
+		}
+
+		function zoom_in() {
+			FIND('designer').operations.zoom('+');
+		}
+
+		function zoom_out() {
+			FIND('designer').operations.zoom('-');
+		}
+
+		function zoom_reset() {
+			FIND('designer').operations.zoom();
+		}
+
+		function themechanger() {
+			SETTER('loading', 'show');
+			setTimeout(function() {
+				SET('common.theme', common.theme === 'dark' ? '' : 'dark');
+				SETTER('loading', 'hide', 1000);
+			}, 1000);
+		}
+
 	</script>
 </body>
 </html>
