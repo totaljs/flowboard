@@ -1,4 +1,4 @@
-<div data-jc="form" data-title="@(Flow components)" data-jc-path="common.form" data-if="value === 'database'" data-width="930px" data-jc-init="formdatabase_init" class="hidden">
+<div data-jc="form" data-title="@(Flowboard components)" data-jc-path="common.form" data-if="value === 'database'" data-width="930px" data-jc-init="formdatabase_init" class="hidden">
 	<div class="padding npb" style="background-color:#FFFCD3">
 		<div class="b m black"><i class="fa fa-database mr5"></i>@(Installing new components)</div>
 		<div class="row">
@@ -96,7 +96,7 @@
 			}
 
 			if (value.body.indexOf('exports.name') === -1 || value.body.indexOf('exports.install') === -1) {
-				SETTER('message', 'warning', '@(This file is not a Total.js Flowboard component.)');
+				SETTER('message', 'warning', '@(This file is not Total.js Flowboard component.)');
 				return;
 			}
 
@@ -121,7 +121,7 @@
 		var arr = common.templates.findItem('name', el.attr('data-value'));
 		SETTER('loading', 'show');
 		arr.items.waitFor(function(item, next) {
-			SETTER('websocket', 'send', { type: 'install', filename: 'https://cdn.totaljs.com/flow/{0}.js'.format(item) });
+			SETTER('websocket', 'send', { type: 'install', filename: 'https://raw.githubusercontent.com/totaljs/flowboardcomponents/master/{0}/{0}.html'.format(item) });
 			setTimeout(next, 500);
 		}, function() {
 			SETTER('loading', 'hide', 1000);

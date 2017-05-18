@@ -3095,11 +3095,11 @@ COMPONENT('imageupload', function() {
 
 	self.make = function() {
 
-		format = self.attr('data-format') || '/download/{0}';
+		format = self.attr('data-format') || 'download/{0}';
 		var id = 'imageupload' + self.id;
 
 		self.classes('ui-imageupload');
-		self.html('<img src="/img/themedark.png" alt="" class="img-responsive" />');
+		self.html('<img src="img/themedark.png" alt="" class="img-responsive" />');
 		$(document.body).append('<input type="file" id="{0}" class="hidden" accept="image/*" />'.format(id));
 
 		input = $('#' + id);

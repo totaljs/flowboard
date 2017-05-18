@@ -12,9 +12,9 @@
 	<meta name="apple-mobile-web-app-capable" content="yes" />
 	<meta name="apple-mobile-web-app-status-bar-style" content="#A0A0A0" />
 	<meta name="apple-mobile-web-app-title" content="@{config.name}" />
-	<link rel="apple-touch-icon" href="/icon.png" />
-	@{import('head', 'default.css', 'favicon.ico')}
-	<script>var user = JSON.parse('@{json(user)}');user = {};user.sa = true;</script>
+	<link rel="apple-touch-icon" href="icon.png" />
+	<link type="text/css" rel="stylesheet" href="default.css" />
+	<script>var user = JSON.parse('@{json(user)}');!user && (user = {});</script>
 </head>
 <body data-jc="exec,binder" class="themedark">
 
@@ -22,7 +22,7 @@
 	<div data-jc="confirm"></div>
 	<div data-jc="contextmenu"></div>
 	<div data-jc="loading"></div>
-	<div data-jc="websocket" data-url="/"></div>
+	<div data-jc="websocket" data-url="@{model.url}?&token=@{query.token}&baa=@{model.baa}"></div>
 	<div data-jc="audio" data-jc-path="common.volume"></div>
 
 	<div data-jc="resource">
@@ -86,16 +86,17 @@
 	</div>
 
 	<div id="flowboardsettings"></div>
-	<div data-jc="importer" data-jc-path="common.form" data-if="value === 'database'" data-url="/templates/form-database.html" data-reload="formdatabase_reload"></div>
-	<div data-jc="importer" data-jc-path="common.form" data-if="value === 'tab'" data-url="/templates/form-tab.html"></div>
+	<div data-jc="importer" data-jc-path="common.form" data-if="value === 'database'" data-url="templates/form-database.html" data-reload="formdatabase_reload"></div>
+	<div data-jc="importer" data-jc-path="common.form" data-if="value === 'tab'" data-url="templates/form-tab.html"></div>
 
-	@{import('default.js')}
+	@{import(model.url + 'default.js')}
 	@{place('scripts')}
 
 	<script>
 
 		common.draggable = {};
 		common.draft = false;
+		common.url = NAVIGATION.url;
 
 		common.resizable = {};
 		common.resizable.width = 100;
@@ -128,14 +129,15 @@
 			SETTER(true, 'designer', 'readonly', value !== true);
 		}, true);
 
-		var URL = '/api';
-
 		ON('online', function(is) {
 			SETTER('loading', is ? 'hide' : 'show', is ? 1000 : 0);
 		});
 
 		ON('message', function(data) {
 			switch (data.type) {
+				case 'templates':
+					SET('common.templates', data.body);
+					break;
 				case 'instances':
 					SET('common.instances', data.body);
 					break;
@@ -208,7 +210,7 @@
 			}
 
 			@{if helpers.FLOW}
-			user.sa && items.push({ name: '<b>@(Open Flow designer)</b>', icon: 'fa-sitemap', url: '/$flow/' });
+			items.push({ name: '<b>@(Open Flow designer)</b>', icon: 'fa-sitemap', url: '/$flow/' });
 			@{fi}
 
 			FIND('contextmenu').show('left', el, items, function(value) {
