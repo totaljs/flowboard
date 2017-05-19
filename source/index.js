@@ -204,7 +204,7 @@ function component_install(controller, response, callback) {
 
 	var u = response.body.substring(0, 6);
 	if (u === 'http:/' || u === 'https:') {
-		U.download(response.body, FLAGS, function(err, response) {
+		U.download(response.body, FLAGS, function(err, res) {
 
 			if (err) {
 				WS_ERROR.body = err.toString();
@@ -214,7 +214,7 @@ function component_install(controller, response, callback) {
 
 			var filename = F.path.root(PATH + U.getName(response.body));
 			var writer = Fs.createWriteStream(filename);
-			response.pipe(writer);
+			res.pipe(writer);
 			writer.on('finish', function() {
 				callback && callback();
 				controller && send_component(filename, controller);

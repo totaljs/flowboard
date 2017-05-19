@@ -27,8 +27,9 @@ common.operations.remove = function(name, uninstall) {
 		delete instance.$events;
 		$(this).remove();
 	});
-	common.database = common.database.remove(name);
+	common.database = common.database.remove('name', name);
 	uninstall && SETTER('websocket', 'send', { type: 'uninstall', body: name });
+	UPDATE('common.database', 1000);
 };
 
 common.operations.append = function(html, updated) {
@@ -105,6 +106,8 @@ common.operations.append = function(html, updated) {
 		var designer = FIND('designer');
 		designer && designer.operations.upgrade(component);
 	}
+
+	common.database.quicksort('name');
 
 	// hack for refreshing database
 	common.form === 'database' && UPDATE('common.database');
