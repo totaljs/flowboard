@@ -41,8 +41,7 @@ exports.install = function(options) {
 		});
 	}
 
-	OPT.url = U.path(OPT.url || '/$flowboard/');
-
+	global.FLOWBOARD.url = OPT.url = U.path(OPT.url || '/$flowboard/');
 	!OPT.limit && (OPT.limit = 50);
 	!OPT.templates && (OPT.templates = 'https://rawgit.com/totaljs/flowboardcomponents/master/templates.json');
 
@@ -67,6 +66,8 @@ exports.install = function(options) {
 	F.map(OPT.url + 'templates/', '@flowboard/templates/');
 	F.map(OPT.url + 'fonts/', '@flowboard/fonts/');
 	F.map(OPT.url + 'img/', '@flowboard/img/');
+
+	F.helpers.FLOWBOARD = global.FLOWBOARD;
 
 	// Service
 	ON('service', service);
