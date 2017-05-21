@@ -52,8 +52,6 @@ exports.install = function(options) {
 	// Routes
 	F.route(OPT.url, view_index);
 	F.route(OPT.url + 'api/upload/', upload, ['post', 'upload', 10000], 3084); // 3 MB
-	F.route(OPT.url + 'api/components/', json_components);
-	F.route(OPT.url + 'api/component/', json_components_save, ['post']);
 	F.websocket(OPT.url, websocket, ['json'], OPT.limit);
 
 	// Files
@@ -114,35 +112,6 @@ function download(req, res) {
 		else
 			res.stream(header.type, stream);
 	});
-}
-
-function json_components() {
-
-	var self = this;
-	if (!auth(self))
-		return;
-
-	var path = F.path.root(PATH);
-
-	if (self.query.filename) {
-		Fs.readFile(path + U.getName(self.query.filename), function(err, data) {
-			data && self.binary(data, 'text/html', 'binary');
-		});
-	} else {
-		U.ls(path, function(files) {
-			files = files.map(n => U.getName(n));
-			self.json(files);
-		}, (filename) => filename.endsWith('.html'));
-	}
-}
-
-function json_components_save() {
-	var self = this;
-	if (!auth(self))
-		return;
-	var path = F.path.root(PATH);
-	Fs.writeFile(path + 'designer.json', JSON.stringify(self.body));
-	self.json(SUCCESS(true));
 }
 
 function websocket() {

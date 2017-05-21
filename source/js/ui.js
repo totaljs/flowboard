@@ -945,6 +945,13 @@ COMPONENT('designer', function() {
 			}
 			e.preventDefault();
 		});
+
+		var tmp = CACHE('designer.zoom');
+		if (tmp !== undefined && zoom !== tmp) {
+			setTimeout(function() {
+				self.operations.zoom(tmp);
+			}, 1000);
+		}
 	};
 
 	function getResizable(el) {
@@ -1163,10 +1170,13 @@ COMPONENT('designer', function() {
 			zoom += 0.08;
 		else if (value === '-')
 			zoom -= 0.08;
-		else
+		else if (value === undefined)
 			zoom = 1;
+		else
+			zoom = value;
 
 		self.element.parent().css('transform', 'scale({0})'.format(zoom));
+		CACHE('designer.zoom', zoom, '1 year');
 		return self;
 	};
 
