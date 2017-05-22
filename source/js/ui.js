@@ -375,8 +375,6 @@ COMPONENT('form', function() {
 
 	self.setter = function() {
 
-		console.log('SOM TU', self.path, self.get());
-
 		setTimeout2('noscroll', function() {
 			$('html').toggleClass('noscroll', $('.ui-form-container').not('.hidden').length ? true : false);
 		}, 50);
