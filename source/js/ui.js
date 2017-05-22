@@ -375,6 +375,8 @@ COMPONENT('form', function() {
 
 	self.setter = function() {
 
+		console.log('SOM TU', self.path, self.get());
+
 		setTimeout2('noscroll', function() {
 			$('html').toggleClass('noscroll', $('.ui-form-container').not('.hidden').length ? true : false);
 		}, 50);
@@ -1129,14 +1131,38 @@ COMPONENT('designer', function() {
 		return self;
 	};
 
+	function dependencies(c, fn) {
+
+		if (c.$pending === 2 || c.dependencies == null || c.dependencies.length === 0) {
+			fn();
+		} else if (c.$pending === 1) {
+			WAIT(function() {
+				return c.$pending === 2;
+			}, function() {
+				fn();
+			});
+		} else {
+			c.$pending = 1;
+			c.dependencies.waitFor(function(item, next) {
+				IMPORT('ONCE ' + item, next);
+			}, function() {
+				c.$pending = 2;
+				fn();
+			});
+		}
+	}
+
 	self.operations.upgrade = function(component) {
 		component && component.name && self.find('figure[name="{0}"]'.format(component.name)).each(function() {
 			var instance = this.$instance;
 			instance.emit('destroy');
-			component.html && instance.element.append(component.html);
-			instance.element.html(component.html);
-			this.$instance = new Instance(instance.id, instance.element, component, instance.options);
-			component.html && component.html.indexOf('data-jc') !== -1 && COMPILE(instance.element);
+			instance.off().find('*').off();
+			dependencies(component, function() {
+				component.html && instance.element.append(component.html);
+				instance.element.html(component.html);
+				this.$instance = new Instance(instance.id, instance.element, component, instance.options);
+				component.html && component.html.indexOf('data-jc') !== -1 && COMPILE(instance.element);
+			});
 		});
 		return self;
 	};
@@ -1145,22 +1171,20 @@ COMPONENT('designer', function() {
 		var component = common.database.findItem('name', name);
 		if (!component)
 			return false;
-
-		var template = '<figure data-jc-scope="scope{0}" class="component" data-id="{0}" data-name="{1}" style="left:{2}px;top:{3}px;position:absolute;z-index:{4}"></div>'.format(id, name, x, y, component.zindex || 5);
-
-		if (component.zindex === 0)
-			container.prepend(template);
-		else
-			container.append(template);
-
-		var figure = container.find('[data-id="{0}"]'.format(id));
-		component.html && figure.append(component.html);
-
-		var instance = new Instance(id, figure, component, options);
-		figure.get(0).$instance = instance;
-		component.html && component.html.indexOf('data-jc') !== -1 && COMPILE(figure);
-		!load && EMIT('designer.change', true);
-		EMIT('designer.append', instance);
+		dependencies(component, function() {
+			var template = '<figure data-jc-scope="scope{0}" class="component" data-id="{0}" data-name="{1}" style="left:{2}px;top:{3}px;position:absolute;z-index:{4}"></div>'.format(id, name, x, y, component.zindex || 5);
+			if (component.zindex === 0)
+				container.prepend(template);
+			else
+				container.append(template);
+			var figure = container.find('[data-id="{0}"]'.format(id));
+			component.html && figure.append(component.html);
+			var instance = new Instance(id, figure, component, options);
+			figure.get(0).$instance = instance;
+			component.html && component.html.indexOf('data-jc') !== -1 && COMPILE(figure);
+			!load && EMIT('designer.change', true);
+			EMIT('designer.append', instance);
+		});
 		return true;
 	};
 
