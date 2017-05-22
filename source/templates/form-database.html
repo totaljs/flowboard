@@ -119,7 +119,7 @@
 		var arr = common.templates.findItem('name', el.attr('data-value'));
 		SETTER('loading', 'show');
 		arr.items.waitFor(function(item, next) {
-			SETTER('websocket', 'send', { type: 'install', body: 'https://rawgit.com/totaljs/flowboardcomponents/master/{0}/{0}.html'.format(item) });
+			SETTER('websocket', 'send', { type: 'install', body: item });
 			setTimeout(next, 500);
 		}, function() {
 			SETTER('loading', 'hide', 1000);
