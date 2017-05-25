@@ -76,7 +76,10 @@ function service(counter) {
 }
 
 function view_index() {
-	auth(this) && this.view('@flowboard/index', OPT);
+	if (this.uri.pathname !== OPT.url)
+		this.redirect(OPT.url, true);
+	else
+		auth(this) && this.view('@flowboard/index', OPT);
 }
 
 // Upload (multiple) pictures
