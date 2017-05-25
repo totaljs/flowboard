@@ -209,8 +209,14 @@
 				items.push({ name: save ? '@(Save flowboard)' : '@(Edit flowboard)', icon: save ? 'fa-floppy-o' : 'fa-pencil', value: 'edit' });
 			}
 
+			@{if helpers.FLOW || helpers.DASHBOARD}
+			items.push('@(Applications)');
+			@{if helpers.DASHBOARD}
+			items.push({ name: '@(Dashboard)', icon: 'fa-dashboard', url: '@{helpers.DASHBOARD.url}' });
+			@{fi}
 			@{if helpers.FLOW}
-			items.push({ name: '<b>@(Open Flow designer)</b>', icon: 'fa-sitemap', url: '/$flow/' });
+			items.push({ name: '@(Flow designer)', icon: 'fa-sitemap', url: '@{helpers.FLOW.url}' });
+			@{fi}
 			@{fi}
 
 			FIND('contextmenu').show('left', el, items, function(value) {
