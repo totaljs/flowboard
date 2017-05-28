@@ -185,9 +185,16 @@ exports.uninstall = function() {
 </script>
 ```
 
+__Common variables (client-side)__:
+
+```javascript
+common.instances;
+// {Object Array} All Flow instances
+```
+
 __Good to know__:
 
-- `jComponent` each element is wrapped to `data-jc-scope`
+- each Flowboard element is wrapped to `data-jc-scope=""` (generated randomly)
 - if some element will contain `.resizable` class then the designer shows `resizable` form
 
 ### Flow (server-side)
