@@ -201,7 +201,7 @@ __Good to know__:
 
 Each Flow component connected to Flowboard component can define this code:
 
-```javacript
+```javascript
 // (Optional) This code sends data to Flowboard component (server-side to client-side)
 instance.flowboard_send = function(data, category) {
     // This code sends data to client-side
