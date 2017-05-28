@@ -154,7 +154,7 @@ function websocket() {
 				break;
 			case 'send':
 				var instance = FLOW.findById(message.id);
-				instance && instance.custom.process(message.body);
+				instance && instance.flowboard_process && instance.flowboard_process(message.body);
 				break;
 			case 'install':
 				component_install(self, message);
@@ -250,13 +250,18 @@ function send_laststate(client, callback) {
 	}
 
 	global.FLOW.findByComponent(/^flowboard/i).wait(function(item, next) {
+
+		if (!item.flowboard_laststate)
+			return next();
+
 		WS_DATA.id = item.id;
 		WS_DATA.component = item.component;
 		WS_DATA.name = item.name;
-		WS_DATA.body = item.custom.current();
+		WS_DATA.body = item.flowboard_laststate();
 		WS_DATA.category = null;
 		client.send(WS_DATA);
 		setImmediate(next);
+
 	}, callback);
 }
 
