@@ -294,6 +294,7 @@
 		});
 
 		ON('designer.settings', function(el, instance) {
+			$('.resizable-container').removeClass('resizable-container-visible', false);
 			instance.settings();
 		});
 
