@@ -31,6 +31,9 @@ var options = {};
 // HTTP Basic auth:
 // options.auth = ['admin:admin', 'name:password'];
 
+// Standard "authorize" flag
+// options.auth = true;
+
 // IP restrictions:
 // options.restrictions = ['127.0.0.1', '138.201', '172.31.33'];
 
@@ -222,3 +225,5 @@ instance.flowboard_laststate = function() {
 ## Components
 
 - https://github.com/totaljs/flowboardcomponents
+
+## Contributing

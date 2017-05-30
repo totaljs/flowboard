@@ -49,10 +49,17 @@ exports.install = function(options) {
 		Fs.mkdirSync(F.path.root(PATH));
 	} catch(e) {}
 
+	var flags = [];
+
 	// Routes
-	F.route(OPT.url, view_index);
-	F.route(OPT.url + 'api/upload/', upload, ['post', 'upload', 10000], 3084); // 3 MB
-	F.websocket(OPT.url, websocket, ['json'], OPT.limit);
+	if (OPT.auth === true)
+		flags.push('authorize');
+
+	F.group(flags, function() {
+		F.route(OPT.url, view_index);
+		F.route(OPT.url + 'api/upload/', upload, ['post', 'upload', 10000], 3084); // 3 MB
+		F.websocket(OPT.url, websocket, ['json'], OPT.limit);
+	});
 
 	// Files
 	F.file(OPT.url + 'download/*.*', download);
