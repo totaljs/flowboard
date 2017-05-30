@@ -2977,7 +2977,7 @@ COMPONENT('fileupload', function() {
 				data.append('file' + i, files[i]);
 
 			SETTER('loading', 'show');
-			UPLOAD(self.attr('data-url'), data, function(response, err) {
+			UPLOAD(self.attr('data-url') || (NAVIGATION.url + 'api/upload/'), data, function(response, err) {
 
 				el.value = '';
 				SETTER('loading', 'hide', 500);
@@ -3149,7 +3149,7 @@ COMPONENT('imageupload', function() {
 			data.append('data', files[0]);
 
 			SETTER('loading', 'show');
-			UPLOAD(self.attr('data-url'), data, function(response, err) {
+			UPLOAD(self.attr('data-url') || (NAVIGATION.url + 'api/upload/'), data, function(response, err) {
 				SETTER('loading', 'hide', 1000);
 				if (err) {
 					var message = FIND('message');
