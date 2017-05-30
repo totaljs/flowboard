@@ -228,4 +228,4 @@ instance.flowboard_laststate = function() {
 
 ## Contribute
 
-This project is stored in GitHub private repository. Contact me petersirka@gmail.com if you want be a contributor.
+This project is stored in GitHub private repository. Contact me <petersirka@gmail.com> if you want be a contributor.
