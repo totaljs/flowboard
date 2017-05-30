@@ -226,4 +226,6 @@ instance.flowboard_laststate = function() {
 
 - https://github.com/totaljs/flowboardcomponents
 
-## Contributing
+## Contribute
+
+This project is stored in GitHub private repository. Contact me petersirka@gmail.com if you want be a contributor.
