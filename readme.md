@@ -45,6 +45,7 @@ INSTALL('package', 'https://cdn.totaljs.com/2017xc9db052e/flowboard.package', op
 
 - __IMPORTANT__: it doesn't support `UPTODATE` mechanism
 - URL address `http://127.0.0.1:8000/$flowboard/` (default, can be changed in config)
+- __first start__ you have to install components via Component manager in `Flowboard`
 
 ## How to create own component?
 
