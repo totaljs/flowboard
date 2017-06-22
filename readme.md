@@ -6,7 +6,8 @@ __Total.js Flowboard__ is a visual designer interface for __IoT__ and [Total.js 
 
 ## Installation
 
-- Total.js `+v2.5.0`
+- Total.js `+v2.6.0`
+- Flow `+v3.0.0`
 - download and copy `flowboard.package` into the `/packages/` directory __or create a definition file with:__
 
 ```javascript
@@ -22,7 +23,7 @@ var options = {};
 // options.limit = 50;
 
 // Predefined set of components (default value):
-// options.templates = 'https://raw.githubusercontent.com/totaljs/flowcomponents/master/templates.json';
+// options.templates = 'https://raw.githubusercontent.com/totaljs/flowboardcomponents/master/templates.json';
 
 // ====================================
 // Security (OPTIONAL)
@@ -38,7 +39,7 @@ var options = {};
 // options.restrictions = ['127.0.0.1', '138.201', '172.31.33'];
 
 // options.token = ['OUR_COMPANY_TOKEN'];
-// you can open flow using : /$flowboard/?token=OUR_COMPANY_TOKEN
+// you can open flowboard using : /$flowboard/?token=OUR_COMPANY_TOKEN
 
 INSTALL('package', 'https://cdn.totaljs.com/2017xc9db052e/flowboard.package', options);
 ```
@@ -206,16 +207,13 @@ __Good to know__:
 Each Flow component connected to Flowboard component can define this code:
 
 ```javascript
-// (Optional) This code sends data to Flowboard component (server-side to client-side)
-instance.flowboard_send = function(data, category) {
-    // This code sends data to client-side
-    global.FLOWBOARD && global.FLOWBOARD.send(instance, data, category);
-};
+// This method sends data to Flowboard component (server-side to client-side)
+instance.flowboard(data, [category]);
 
-// (Optional) This code processes data from Flowboard (client-side to server-side)
-instance.flowboard_process = function(data) {
+// This event captures data from a Flowboard component
+instance.on('flowboard', function(data) {
 
-};
+});
 
 // (Optional) This code has to return last state/data from the Flow component
 instance.flowboard_laststate = function() {

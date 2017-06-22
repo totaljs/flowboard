@@ -9,10 +9,6 @@ common.instances = [];
 
 SETTER(true, 'loading', 'hide', 1000);
 
-common.operations.refresh = function() {
-
-};
-
 common.operations.emit = function(name, a, b, c, d) {
 	$('figure.component').each(function() {
 		this.$instance.emit(name, a, b, c, d);

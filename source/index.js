@@ -76,6 +76,17 @@ exports.install = function(options) {
 
 	// Service
 	ON('service', service);
+
+	WAIT(function() {
+		return global.FLOW;
+	}, function() {
+		FLOW.prototypes(function(proto) {
+			proto.Component.flowboard = function(data, category) {
+				FLOWBOARD.send(this, data, category);
+				return this;
+			};
+		});
+	});
 };
 
 function service(counter) {
@@ -165,7 +176,7 @@ function websocket() {
 				break;
 			case 'send':
 				var instance = FLOW.findById(message.id);
-				instance && instance.flowboard_process && instance.flowboard_process(message.body);
+				instance && instance.emit('flowboard', message.body);
 				break;
 			case 'install':
 				component_install(self, message);
