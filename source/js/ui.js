@@ -151,7 +151,6 @@ COMPONENT('binder', function() {
 		add && element.addClass(add);
 	}
 
-
 	function decode(val) {
 		return val.replace(/\&\#39;/g, '\'');
 	}
