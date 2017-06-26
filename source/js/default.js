@@ -24,7 +24,7 @@ common.operations.remove = function(name, uninstall) {
 		$(this).remove();
 	});
 	common.database = common.database.remove('name', name);
-	uninstall && SETTER('websocket', 'send', { type: 'uninstall', body: name });
+	uninstall && SETTER('websocket', 'send', { TYPE: 'uninstall', body: name });
 	UPDATE('common.database', 1000);
 };
 
@@ -142,12 +142,24 @@ Instance.prototype.menu = function(items, el, callback, offsetX) {
 	return this;
 };
 
-Instance.prototype.send = function(id, data) {
-	var msg = {};
-	msg.type = 'send';
-	msg.id = id;
-	msg.body = data;
-	SETTER('websocket', 'send', msg);
+Instance.prototype.send = function(id, type, data) {
+	if (data) {
+		var msg = {};
+		msg.TYPE = 'send';
+		msg.id = id;
+		msg.type = type;
+		msg.body = data;
+		SETTER('websocket', 'send', msg);
+	} else {
+		var msg = {};
+		msg.TYPE = 'send';
+		msg.id = id;
+		msg.type = type;
+		msg.body = data;
+		setTimeout2('isend' + id + 'x' + (type || ''), function(msg) {
+			SETTER('websocket', 'send', msg);
+		}, 200, 10, msg);
+	}
 	return this;
 };
 
@@ -165,6 +177,11 @@ Instance.prototype.html = function(value) {
 
 Instance.prototype.event = function() {
 	this.element.on.apply(this.element, arguments);
+	return this;
+};
+
+Instance.prototype.css = function() {
+	this.element.css.apply(this.element, arguments);
 	return this;
 };
 

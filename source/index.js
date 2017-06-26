@@ -28,6 +28,10 @@ global.FLOWBOARD.send = function(instance, type, data) {
 	WS && WS.send(WS_DATA);
 };
 
+global.FLOWBOARD.online = function() {
+	return WS ? true : false;
+};
+
 exports.install = function(options) {
 
 	OPT = options;
@@ -175,7 +179,7 @@ function websocket() {
 				break;
 			case 'send':
 				var instance = FLOW.findById(message.id);
-				instance && instance.emit('dashboard', message.type, message.body);
+				instance && instance.emit('flowboard', message.type, message.body);
 				break;
 			case 'install':
 				component_install(self, message);

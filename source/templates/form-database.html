@@ -50,7 +50,7 @@
 
 <script>
 
-	SETTER('websocket', 'send', { 'type': 'templates' });
+	SETTER('websocket', 'send', { 'TYPE': 'templates' });
 
 	var formdatabase = { reload: false };
 
@@ -78,7 +78,7 @@
 
 	WATCH('formdatabase.url', function(path, value) {
 		if (value && value.isURL()) {
-			SETTER('websocket', 'send', { type: 'install', filename: value });
+			SETTER('websocket', 'send', { TYPE: 'install', filename: value });
 			SET('formdatabase.url', '', true);
 			SET('formdatabase.success', true);
 			SET('formdatabase.success', false, 3500);
@@ -108,7 +108,7 @@
 
 			formdatabase.reload = true;
 			common.statics = {};
-			SETTER('websocket', 'send', { type: 'install', filename: value.filename, body: value.body });
+			SETTER('websocket', 'send', { TYPE: 'install', filename: value.filename, body: value.body });
 			SET('formdatabase.file', null, true);
 			SET('formdatabase.success', true);
 			SET('formdatabase.success', false, 3500);
@@ -119,7 +119,7 @@
 		var arr = common.templates.findItem('name', el.attr('data-value'));
 		SETTER('loading', 'show');
 		arr.items.waitFor(function(item, next) {
-			SETTER('websocket', 'send', { type: 'install', body: item });
+			SETTER('websocket', 'send', { TYPE: 'install', body: item });
 			setTimeout(next, 500);
 		}, function() {
 			SETTER('loading', 'hide', 1000);
