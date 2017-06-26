@@ -32,6 +32,7 @@ common.operations.append = function(html, updated) {
 
 	var beg = -1;
 	var end = -1;
+	var tmp = -1;
 
 	var body_settings = '';
 	var body_svg = '';
@@ -41,14 +42,30 @@ common.operations.append = function(html, updated) {
 	var body_html = '';
 
 	while (true) {
+
 		beg = html.indexOf('<script', end);
 		if (beg === -1)
 			break;
-		end = html.indexOf('</script>', beg);
+
+		end = html.indexOf('</script>', beg + 7);
+		tmp = html.indexOf('<script', beg + 7);
+
+		if (tmp !== -1 && tmp < end) {
+			while (true) {
+				end = html.indexOf('</script>', tmp + 7);
+				tmp = html.indexOf('<script', tmp + 7);
+				if (tmp === -1 || tmp > end) {
+					end = html.lastIndexOf('</script>', tmp);
+					break;
+				}
+			}
+		}
+
 		if (end === -1)
 			break;
 
 		var body = html.substring(beg, end);
+
 		var beg = body.indexOf('>') + 1;
 		var type = body.substring(0, beg);
 		body = body.substring(beg).trim();
