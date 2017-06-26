@@ -2,29 +2,29 @@
 // Copyright Peter Širka <petersirka@gmail.com>
 
 const Fs = require('fs');
-const WS_COMPONENT = { type: 'component' };
-const WS_LOADED = { type: 'loaded' };
-const WS_INIT = { type: 'init' };
-const WS_INSTANCES = { type: 'instances' };
-const WS_DATA = { type: 'data' };
+const WS_COMPONENT = { TYPE: 'component' };
+const WS_LOADED = { TYPE: 'loaded' };
+const WS_INIT = { TYPE: 'init' };
+const WS_INSTANCES = { TYPE: 'instances' };
+const WS_DATA = { TYPE: 'data' };
+const WS_ERROR = { TYPE: 'error' };
+const WS_TEMPLATES = { TYPE: 'templates' };
 const PATH = '/flowboard/';
 const NOSQLDB = 'flowboard';
 const FILEDESIGNER = '/flowboard/designer.json';
 const FLAGS = ['get', 'dnscache'];
-const WS_ERROR = { type: 'error' };
-const WS_TEMPLATES = { type: 'templates' };
 
 var OPT;
 var DDOS = {};
 var WS = null;
 
 global.FLOWBOARD = {};
-global.FLOWBOARD.send = function(instance, data, category) {
+global.FLOWBOARD.send = function(instance, type, data) {
 	WS_DATA.id = instance.id;
 	WS_DATA.name = instance.name;
 	WS_DATA.component = instance.component;
 	WS_DATA.body = data;
-	WS_DATA.category = category;
+	WS_DATA.type = type;
 	WS && WS.send(WS_DATA);
 };
 
@@ -81,8 +81,8 @@ exports.install = function(options) {
 		return global.FLOW;
 	}, function() {
 		FLOW.prototypes(function(proto) {
-			proto.Component.flowboard = function(data, category) {
-				FLOWBOARD.send(this, data, category);
+			proto.Component.flowboard = function(type, data) {
+				FLOWBOARD.send(this, type, data);
 				return this;
 			};
 		});
@@ -155,17 +155,16 @@ function websocket() {
 		client.send(WS_INIT);
 		send_instances(client, () => send_components(client, () => send_settings(client, function() {
 			self.send(WS_LOADED);
-			setImmediate(() => send_laststate(client));
 		})));
 	});
 
 	self.on('message', function(client, message) {
 
 		// message.id
-		// message.type
+		// message.TYPE
 		// message.body
 
-		switch (message.type) {
+		switch (message.TYPE) {
 			case 'templates':
 				OPT.templates && U.request(OPT.templates, FLAGS, function(err, response) {
 					if (!err) {
@@ -176,7 +175,7 @@ function websocket() {
 				break;
 			case 'send':
 				var instance = FLOW.findById(message.id);
-				instance && instance.emit('flowboard', message.body);
+				instance && instance.emit('dashboard', message.type, message.body);
 				break;
 			case 'install':
 				component_install(self, message);
@@ -262,29 +261,6 @@ function send_instances(client, callback) {
 
 	client.send(WS_INSTANCES);
 	callback && callback();
-}
-
-function send_laststate(client, callback) {
-
-	if (!global.FLOW) {
-		callback && callback();
-		return;
-	}
-
-	global.FLOW.findByComponent(/^flowboard/i).wait(function(item, next) {
-
-		if (!item.flowboard_laststate)
-			return next();
-
-		WS_DATA.id = item.id;
-		WS_DATA.component = item.component;
-		WS_DATA.name = item.name;
-		WS_DATA.body = item.flowboard_laststate();
-		WS_DATA.category = null;
-		client.send(WS_DATA);
-		setImmediate(next);
-
-	}, callback);
 }
 
 function send_component(filename, client, callback) {

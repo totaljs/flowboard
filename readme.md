@@ -128,7 +128,7 @@ exports.install = function(instance) {
     // Shows a context-menu
     // items [{ name: String, icon: String }, { name: String, icon: String, url: String }, 'DIVIDER']
 
-    instance.send(id, data);
+    instance.send(id, type, data);
     // Sends a message to specified instance by instance id
 
     instance.find(selector);
@@ -163,6 +163,7 @@ exports.install = function(instance) {
     });
 
     instance.on('data', function(response) {
+
         response.id;
         // {String} Flow: instance.id
 
@@ -172,14 +173,15 @@ exports.install = function(instance) {
         response.component;
         // {String} Flow: instance.component
 
-        response.component;
-        // {String} Flow: instance.component
+        response.reference;
+        // {String} Flow: instance.reference
 
-        response.category;
-        // {String} category (optional)
+        response.type;
+        // {String} type
 
         response.body;
         // {Object} data
+
     });
 };
 
@@ -208,18 +210,51 @@ Each Flow component connected to Flowboard component can define this code:
 
 ```javascript
 // This method sends data to Flowboard component (server-side to client-side)
-instance.flowboard(data, [category]);
+instance.flowboard(type, data);
 
 // This event captures data from a Flowboard component
-instance.on('flowboard', function(data) {
+instance.on('flowboard', function(type, data) {
 
 });
-
-// (Optional) This code has to return last state/data from the Flow component
-instance.flowboard_laststate = function() {
-    return null;
-};
 ```
+
+### Components: jComponent +v11.0.0
+
+Bellow jComponents can be used in `Settings form`:
+
+- autocomplete (declared `body`)
+- binder (declared in `body`)
+- calendar (declared in `body`)
+- checkbox
+- checkboxlist
+- codemirror
+- colorpicker (declared in `body`)
+- confirm (declared in `body`)
+- contextmenu (declared in `body`)
+- dropdown
+- dropdowncheckbox
+- error
+- exec (declared in `body`)
+- form
+- importer
+- keyvalue
+- loading
+- message (declared in `body`)
+- nosqlcounter
+- repeater
+- repeater-group
+- search
+- selectbox
+- textbox
+- textboxlist
+- validation
+- visible
+- multioptions
+
+__References:__
+
+- [Componentator.com](https://componentator.com/)
+- [jComponents on Github](https://github.com/totaljs/jComponent)
 
 ## Components
 

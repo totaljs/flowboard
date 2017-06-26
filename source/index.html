@@ -135,7 +135,7 @@
 		});
 
 		ON('message', function(data) {
-			switch (data.type) {
+			switch (data.TYPE) {
 				case 'templates':
 					SET('common.templates', data.body);
 					break;
@@ -153,7 +153,7 @@
 					UPDATE('common.database');
 					break;
 				case 'data':
-					data.type = undefined;
+					data.TYPE = undefined;
 					common.operations.emit('data', data);
 					break;
 			}
@@ -248,9 +248,9 @@
 							if (index)
 								return;
 							var obj = {};
-							obj.type = 'save';
+							obj.TYPE = 'save';
 							obj.body = {};
-							obj.body.type = 'designer';
+							obj.body.TYPE = 'designer';
 							obj.body.body = FIND('designer').operations.save();
 							common.backup = CLONE(obj.body.body);
 							SETTER('websocket', 'send', obj);
