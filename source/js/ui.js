@@ -975,8 +975,12 @@ COMPONENT('designer', function() {
 				return;
 			moving.skip = true;
 			if (moving.element && !moving.element.hasClass('locked')) {
-				css.left = (pageX + scroller.prop('scrollLeft')) - moving.offsetX;
-				css.top = (pageY + scroller.prop('scrollTop')) - moving.offsetY;
+
+				var x = moving.offsetX / zoom;
+				var y = moving.offsetY / zoom;
+
+				css.left = (pageX + scroller.prop('scrollLeft')) - x;
+				css.top = (pageY + scroller.prop('scrollTop')) - y;
 				moving.element.css(css);
 			} else
 				scroller.prop('scrollLeft', moving.x - pageX).prop('scrollTop', moving.y - pageY);
@@ -1023,7 +1027,6 @@ COMPONENT('designer', function() {
 			moving.offsetY = e.pageY - off.top;
 			moving.x = position.x;
 			moving.y = position.y;
-			EMIT('designer.change', true);
 		} else {
 			moving.x = pageX + scroller.prop('scrollLeft');
 			moving.y = pageY + scroller.prop('scrollTop');
@@ -1197,6 +1200,11 @@ COMPONENT('designer', function() {
 			zoom = 1;
 		else
 			zoom = value;
+
+		if (zoom < 0.5)
+			zoom = 0.5;
+		else if (zoom > 1.8)
+			zoom = 1.8;
 
 		self.element.parent().css('transform', 'scale({0})'.format(zoom));
 		CACHE('designer.zoom', zoom, '1 year');
