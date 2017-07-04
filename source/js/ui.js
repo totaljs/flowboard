@@ -2889,18 +2889,28 @@ COMPONENT('filereader', function() {
 		}
 
 		element.find('.ui-filereader-input').bind('change', function(evt) {
-			var files = evt.target.files;
-			var file = files[0];
-			var el = this;
-			var reader = new FileReader();
-			reader.onload = function() {
-				el.value = '';
-				self.set({ body: reader.result, filename: file.name, type: file.type, size: file.size });
-				reader = null;
-			};
-			reader.readAsText(file);
+			self.process(evt.target.files);
 		});
 	};
+
+	self.process = function(files) {
+		var el = this;
+		SETTER('loading', 'show');
+		(files.length - 1).async(function(index, next) {
+			var file = files[index];
+			var reader = new FileReader();
+			reader.onload = function() {
+				self.set({ body: reader.result, filename: file.name, type: file.type, size: file.size });
+				reader = null;
+				setTimeout(next, 500);
+			};
+			reader.readAsText(file);
+		}, function() {
+			SETTER('loading', 'hide', 1000);
+			el.value = '';
+		});
+	};
+
 });
 
 COMPONENT('nosqlcounter', function() {
@@ -3572,6 +3582,53 @@ COMPONENT('multioptions', function(self) {
 			var el = $(this);
 			var value = el.attr('data-value');
 			el.find('[data-value="{0}"]'.format(value)).addClass('selected');
+		});
+	};
+});
+
+COMPONENT('dragdropfiles', function() {
+	var self = this;
+	self.readonly();
+
+	self.mirror = function(cls) {
+		var arr = cls.split(' ');
+		for (var i = 0, length = arr.length; i < length; i++) {
+			arr[i] = arr[i].replace(/^(\+|\-)/g, function(c) {
+				return c === '+' ? '-' : '+';
+			});
+		}
+		return arr.join(' ');
+	};
+
+	self.make = function() {
+		var cls = self.attr('data-class');
+		var has = false;
+
+		self.event('dragenter dragover dragexit drop dragleave', function (e) {
+
+			e.stopPropagation();
+			e.preventDefault();
+
+			switch (e.type) {
+				case 'drop':
+					cls && has && self.classes(self.mirror(cls));
+					break;
+				case 'dragenter':
+				case 'dragover':
+					cls && !has && self.classes(cls);
+					has = true;
+					return;
+				case 'dragleave':
+				case 'dragexit':
+				default:
+					setTimeout2(self.id, function() {
+						cls && has && self.classes(self.mirror(cls));
+						has = false;
+					}, 100);
+					return;
+			}
+
+			EXEC(self.attr('data-files'), e.originalEvent.dataTransfer.files, e);
 		});
 	};
 });
