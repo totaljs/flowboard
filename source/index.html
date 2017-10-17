@@ -19,11 +19,11 @@
 </head>
 <body data-jc="exec,binder" class="themedark">
 
-	<div data-jc="message" data-button="@(Close)"></div>
+	<div data-jc="message" data-jc-config="button:@(Close)"></div>
 	<div data-jc="confirm"></div>
 	<div data-jc="contextmenu"></div>
 	<div data-jc="loading"></div>
-	<div data-jc="websocket" data-url="@{model.url}?&token=@{query.token}&baa=@{model.baa}"></div>
+	<div data-jc="websocket" data-jc-config="url:@{model.url}?&token=@{query.token}&baa=@{model.baa}"></div>
 	<div data-jc="audio" data-jc-path="common.volume"></div>
 
 	<div data-jc="resource">
@@ -40,13 +40,13 @@
 		<div data-jc="checkbox" data-jc-path="common.resizable.lock">@(Constrain proportions)</div>
 		<hr />
 		<div data-b="common.resizable.lock" data-b-visible="n => !n">
-			<div class="m" data-jc-keypress="true" data-jc="range" data-jc-path="common.resizable.width" data-max="800" data-min="1" data-step="1" data-jc-type="number">@(Width)</div>
-			<div class="m" data-jc-keypress="true" data-jc="range" data-jc-path="common.resizable.height" data-max="800" data-min="1" data-step="1" data-jc-type="number">@(Height)</div>
+			<div class="m" data-jc="range" data-jc-path="common.resizable.width" data-jc-config="keypress:true;max:800;min:1;step:1;type:number">@(Width)</div>
+			<div class="m" data-jc="range" data-jc-path="common.resizable.height" data-jc-config="keypress:true;max:800;min:1;step:1;type:number">@(Height)</div>
 		</div>
 		<div data-b="common.resizable.lock" data-b-visible="n => n">
-			<div class="m" data-jc-keypress="true" data-jc="range" data-jc-path="common.resizable.size" data-max="800" data-min="1" data-step="1" data-jc-type="number">@(Width / Height)</div>
+			<div class="m" data-jc="range" data-jc-path="common.resizable.size" data-jc-config="keypress:true;max:800;min:1;step:1;type:number">@(Width / Height)</div>
 		</div>
-		<div data-jc-keypress-only="true" data-jc="range" data-jc-path="common.resizable.rotation" data-max="180" data-min="-180" data-step="1" data-jc-type="number">@(Rotate)</div>
+		<div data-jc="range" data-jc-path="common.resizable.rotation" data-jc-config="jckeypressonly:true;max:180;min:-180;step:1;type:number">@(Rotate)</div>
 	</section>
 
 	<section class="zoom-container">
@@ -87,8 +87,8 @@
 	</div>
 
 	<div id="flowboardsettings"></div>
-	<div data-jc="importer" data-jc-path="common.form" data-if="value === 'database'" data-url="@{model.url}templates/form-database.html" data-reload="formdatabase_reload"></div>
-	<div data-jc="importer" data-jc-path="common.form" data-if="value === 'tab'" data-url="@{model.url}templates/form-tab.html"></div>
+	<div data-jc="importer" data-jc-path="common.form" data-jc-config="if:database;reload:formdatabase_reload;url:@{model.url}templates/form-database.html"></div>
+	<div data-jc="importer" data-jc-path="common.form" data-jc-config="if:tab;url:@{model.url}templates/form-tab.html"></div>
 
 	@{import(model.url + 'default.js')}
 	@{place('scripts')}
@@ -329,7 +329,7 @@
 			}
 
 			common.statics[instance.name] = true;
-			COMPILE($('#flowboardsettings').append('<div data-jc-id="html.{0}" data-jc="form" data-title="@(Settings:) {0}" data-jc-path="common.form" data-if="value === \'settings-{0}\'" data-width="800px" class="hidden"><div data-jc-scope="settings.{0}">{1}<div class="ui-form-buttons"><div class="help nmt" style="margin-bottom:5px">@(The options will be applied immediately.)</div><div data-jc="validation" data-jc-path="?" style="width:100%"><button class="exec" data-exec="#settings" disabled="disabled" style="width:100%">@(APPLY SETTINGS)</button></div></div></div></div>'.format(instance.name, common.database.findItem('name', instance.name).settings || '<br /><div class="ui-center padding gray"><i class="fa fa-ban mr5"></i>@(No advanced configuration.)</div><br />')));
+			COMPILE($('#flowboardsettings').append('<div data-jc-id="html.{0}" data-jc="form" data-jc-path="common.form" data-jc-config="if:settings-{0};title:@(Settings\\:) {0};width:800" class="hidden"><div data-jc-scope="settings.{0}">{1}<div class="ui-form-buttons"><div class="help nmt" style="margin-bottom:5px">@(The options will be applied immediately.)</div><div data-jc="validation" data-jc-path="?" style="width:100%"><button class="exec" name="submit" data-exec="#settings" disabled="disabled" style="width:100%">@(APPLY SETTINGS)</button></div></div></div></div>'.format(instance.name.replace(/\:/g, '\:'), common.database.findItem('name', instance.name).settings || '<br /><div class="ui-center padding gray"><i class="fa fa-ban mr5"></i>@(No advanced configuration.)</div><br />')));
 			callback(false);
 		}
 
