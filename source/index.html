@@ -36,6 +36,19 @@
 
 	<a href="javascript:void(0)" data-exec="mainmenu" class="mainmenu exec"><i class="fa fa-navicon"></i></a>
 
+	<div class="toolbar">
+		<div class="container">
+			<div class="tabs">
+				<div data-jc="repeater" data-jc-path="common.tabs">
+					<script type="text/html">
+						<a href="#{{ linker }}" data-id="{{ id }}" data-b="common.tab" data-b-class="n => (n && n.id === common.tabs[{{ index }}].id ? '+' : '-') + 'selected +tab'">{{ name }}</a>
+					</script>
+				</div>
+				<a href="javascript:void(0)" class="last exec" data-exec="#tabs.add"><i class="fa fa-plus-circle"></i></a>
+			</div>
+		</div>
+	</div>
+
 	<section class="resizable-container">
 		<div data-jc="checkbox" data-jc-path="common.resizable.lock">@(Constrain proportions)</div>
 		<hr />
@@ -89,6 +102,7 @@
 	<div id="flowboardsettings"></div>
 	<div data-jc="importer" data-jc-path="common.form" data-jc-config="if:database;reload:formdatabase_reload;url:@{model.url}templates/form-database.html"></div>
 	<div data-jc="importer" data-jc-path="common.form" data-jc-config="if:tab;url:@{model.url}templates/form-tab.html"></div>
+	<div data-jc="importer" data-jc-path="common.form" data-jc-config="if:tab;url:@{model.url}templates/form-tab.html"></div>
 
 	@{import(model.url + 'default.js')}
 	@{place('scripts')}
@@ -107,6 +121,8 @@
 		common.resizable.rotation = 0;
 		common.resizable.lock = true;
 		common.volume = 1;
+
+		common.tabs = [];
 
 		CACHEPATH('common.theme', '1 year');
 
@@ -262,6 +278,30 @@
 				}
 			}, -3);
 		}
+		
+		ON('tabs.save', function(form) {
+
+			var o = form.id ? common.tabs.findItem('id', form.id) : {};
+			o.name = form.name;
+			o.icon = form.icon;
+			o.linker = o.name.slug();
+
+			if (!o.id) {
+				o.id = Date.now().toString();
+				common.tabs.push(o);
+			}
+
+			var position = form.position - 1;
+
+			if (common.tabs[position] && common.tabs[position].id !== o.id) {
+				common.tabs = common.tabs.remove('id', o.id);
+				common.tabs.splice(position, 0, o);
+			}
+
+			UPDATE('common.tabs');
+			SETTER('binder', 'scan');
+			location.hash = o.linker;
+		});
 
 		ON('designer.selected', function(el) {
 			SET('common.selected', el);
@@ -343,6 +383,35 @@
 			instance.options = options;
 			instance.emit('options', options, old);
 			SET('common.form', '');
+		});
+
+		// Tabs operations
+		OPERATION('tabs.add', function() {
+
+			formtabpositions = [];
+			for (var i = 0; i < common.tabs.length + 1; i++)
+				formtabpositions.push({ id: i + 1, name: i + 1 });
+
+			UPDATE('formtabpositions');
+			SET('formtab', { position: common.tabs.length + 1 }, true);
+			SET('common.form', 'tab');
+		});
+
+		OPERATION('tabs.upd', function(id) {
+
+			formtabpositions = [];
+			for (var i = 0; i < common.tabs.length; i++)
+				formtabpositions.push({ id: i + 1, name: i + 1 });
+
+			UPDATE('formtabpositions');
+
+			var index = common.tabs.findIndex('id', id);
+			if (index !== -1) {
+				var data = CLONE(common.tabs[index]);
+				data.position = index + 1;
+				SET('formtab', data, true);
+				SET('common.form', 'tab');
+			}
 		});
 
 		function designer_duplicate() {
