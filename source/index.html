@@ -23,7 +23,7 @@
 	<div data-jc="confirm"></div>
 	<div data-jc="contextmenu"></div>
 	<div data-jc="loading"></div>
-	<div data-jc="websocket" data-jc-config="url:@{model.url}?&token=@{query.token}&baa=@{model.baa}"></div>
+	<div data-jc="websocket" data-jc-config="url:@{model.url}?&token=@{query.token}&baa=@{repository.baa}"></div>
 	<div data-jc="audio" data-jc-path="common.volume"></div>
 
 	<div data-jc="resource">
@@ -278,7 +278,7 @@
 				}
 			}, -3);
 		}
-		
+
 		ON('tabs.save', function(form) {
 
 			var o = form.id ? common.tabs.findItem('id', form.id) : {};
