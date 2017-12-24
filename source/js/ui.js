@@ -1127,7 +1127,7 @@ COMPONENT('designer', function(self) {
 					break;
 				case 'drop':
 					var tmp = $(dragdrop);
-					self.operations.append(GUID(), tmp.attr('data-name'), e.pageX + scroller.prop('scrollLeft'), e.pageY + scroller.prop('scrollTop'), EMPTYOBJECT);
+					self.operations.append(GUID(), common.tab.id, tmp.attr('data-name'), e.pageX + scroller.prop('scrollLeft'), e.pageY + scroller.prop('scrollTop'), EMPTYOBJECT);
 					break;
 			}
 			e.preventDefault();
@@ -1242,29 +1242,76 @@ COMPONENT('designer', function(self) {
 	self.operations = {};
 
 	self.operations.save = function() {
-		var arr = [];
+		var items = [];
 		self.find('figure.component').each(function() {
 			var el = $(this);
 			var instance = el.get(0).$instance;
 			var position = el.getPosition();
 			var obj = {};
 			obj.id = instance.id;
+			obj.tab = instance.tab;
 			obj.name = instance.name;
 			obj.options = instance.options;
 			obj.x = position.x;
 			obj.y = position.y;
-			arr.push(obj);
+			items.push(obj);
 		});
-		return arr;
+
+		var data = {};
+		data.items = items;
+		return data;
 	};
 
 	self.operations.load = function(data) {
 		container.empty();
-		data.forEach(function(item) {
-			self.operations.append(item.id, item.name, item.x, item.y, item.options, true);
+
+		data.items.forEach(function(item) {
+			self.operations.append(item.id, item.tab, item.name, item.x, item.y, item.options, true);
 		});
+
+		common.tabs = data.tabs;
+		
+		if (!common.tabs || !common.tabs.length) {
+			common.tabs = [];
+			common.tabs.push({ id: Date.now().toString(), name: 'Main', icon: 'fa-object-ungroup', linker: 'main' });
+		}
+		
+		UPDATE('common.tabs');
+		SETTER('binder', 'scan');
+
+		var hash = location.hash.substring(1);
+		var tab = common.tabs.findItem('linker', hash);
+
+		if (!tab)
+			tab = common.tabs[0];
+
+		SET('common.tab', tab);
 		EMIT('designer.change', false);
 		return self;
+	};
+
+	self.operations.tabclear = function(id) {
+		container.find('.tab_' + id).each(function() {
+			var el = $(this).get(0);
+			el.$instance.emit('destroy');
+			setTimeout(function() {
+				el.remove();
+			}, 50);
+		});
+	};
+
+	self.operations.tab = function() {
+		setTimeout2('designer.tabs', function() {
+			container.find('.component').each(function() {
+				var el = $(this);
+				var hidden = el.hclass('hidden');
+				if (el.hclass('tab_' + common.tab.id)) {
+					hidden && el.rclass('hidden');
+				} else {
+					!hidden && el.aclass('hidden');
+				}
+			});
+		}, 100);
 	};
 
 	self.operations.duplicate = function() {
@@ -1272,7 +1319,7 @@ COMPONENT('designer', function(self) {
 		var instance = el.get(0).$instance;
 		var options = CLONE(instance.options);
 		var position = el.getPosition();
-		self.operations.append(GUID(), el.attr('data-name'), position.x + 50, position.y + 50, options);
+		self.operations.append(GUID(), common.tab.id, el.attr('data-name'), position.x + 50, position.y + 50, options);
 		self.operations.selected.removeClass('selected');
 		self.operations.selected = null;
 		return self;
@@ -1348,30 +1395,31 @@ COMPONENT('designer', function(self) {
 			dependencies(component, function() {
 				component.html && instance.element.append(component.html);
 				instance.element.html(component.html);
-				this.$instance = new Instance(instance.id, instance.element, component, instance.options);
+				this.$instance = new Instance(instance.id, instance.tab, instance.element, component, instance.options);
 				component.html && component.html.indexOf('data-jc') !== -1 && COMPILE(instance.element);
 			});
 		});
 		return self;
 	};
 
-	self.operations.append = function(id, name, x, y, options, load) {
+	self.operations.append = function(id, tab, name, x, y, options, load) {
 		var component = common.database.findItem('name', name);
 		if (!component)
 			return false;
 		dependencies(component, function() {
-			var template = '<figure data-jc-scope="scope{0}" class="component" data-id="{0}" data-name="{1}" style="left:{2}px;top:{3}px;position:absolute;z-index:{4}"></div>'.format(id, name, x, y, component.zindex || 5);
+			var template = '<figure data-jc-scope="scope{0}" class="component tab_{1} hidden" data-id="{0}" data-name="{2}" style="left:{3}px;top:{4}px;position:absolute;z-index:{5}"></div>'.format(id, tab, name, x, y, component.zindex || 5);
 			if (component.zindex === 0)
 				container.prepend(template);
 			else
 				container.append(template);
 			var figure = container.find('[data-id="{0}"]'.format(id));
 			component.html && figure.append(component.html);
-			var instance = new Instance(id, figure, component, options);
+			var instance = new Instance(id, tab, figure, component, options);
 			figure.get(0).$instance = instance;
 			component.html && component.html.indexOf('data-jc') !== -1 && COMPILE(figure);
 			!load && EMIT('designer.change', true);
 			EMIT('designer.append', instance);
+			self.operations.tab();
 		});
 		return true;
 	};
