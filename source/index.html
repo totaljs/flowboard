@@ -165,10 +165,10 @@
 				case 'designer':
 					common.backup = CLONE(data.body);
 					FIND('designer').operations.load(data.body);
-					SET('common.tabs', data.tabs);
 					break;
 				case 'loaded':
 					UPDATE('common.database');
+					!common.backup && FIND('designer').operations.load({ items: [] });
 					break;
 				case 'data':
 					data.TYPE = undefined;
@@ -214,12 +214,12 @@
 			items.push({ name: '@(Database)', icon: 'fa-database', value: 'database' });
 
 			if (common.draft) {
+				items.push({ name: '@(Clear current tab)', icon: 'fa-trash-o', value: 'clear' });
 				items.push({ name: '@(Save changes)', icon: 'fa-floppy-o', value: 'save' });
 				items.push({ name: '@(Restore changes)', icon: 'fa-refresh', value: 'restore' });
 			} else
 				items.push({ name: '@(Edit mode)', icon: 'fa-object-group', value: 'edit' });
 
-			items.push({ name: '@(Clear desktop)', icon: 'fa-trash-o', value: 'clear' });
 			items.push({ name: '@(Toggle dark theme)', icon: 'fa-paint-brush', value: 'theme' });
 
 			if (common.page === 'dashboard' && device !== 'xs' && dashboard.current) {
@@ -253,7 +253,8 @@
 						FIND('designer').operations.load(common.backup);
 						break;
 					case 'clear':
-						FIND('designer').operations.load([]);
+						SETTER('loading', 'show')('loading', 'hide', 2000);
+						FIND('designer').operations.tabclear(common.tab.id);
 						break;
 					case 'database':
 						SET('common.form', 'database');
@@ -270,7 +271,7 @@
 							obj.body = {};
 							obj.body.TYPE = 'designer';
 							obj.body.body = FIND('designer').operations.save();
-							obj.body.tabs = common.tabs;
+							obj.body.body.tabs = common.tabs;
 							common.backup = CLONE(obj.body.body);
 							SETTER('websocket', 'send', obj);
 							SET('common.draft', false);
@@ -386,6 +387,14 @@
 			SET('common.form', '');
 		});
 
+		$(window).on('hashchange', function() {
+			var tab = common.tabs.findItem('linker', location.hash.substring(1));
+			if (tab) {
+				SET('common.tab', tab);
+				FIND('designer').operations.tab();
+			}
+		});
+
 		// Tabs operations
 		OPERATION('tabs.add', function() {
 
@@ -413,6 +422,18 @@
 				SET('formtab', data, true);
 				SET('common.form', 'tab');
 			}
+		});
+
+		OPERATION('tabs.rem', function(id) {
+			FIND('designer').operations.tabclear(id);
+			SET('common.tabs', common.tabs.remove('id', id));
+			SETTER('binder', 'scan');
+			if (common.tab.id === id)
+				location.hash = common.tabs[0].linker;
+		});
+
+		$(document).on('dblclick', '.tab', function() {
+			common.draft && OPERATION('tabs.upd')(this.getAttribute('data-id'));
 		});
 
 		function designer_duplicate() {

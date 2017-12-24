@@ -127,9 +127,10 @@ common.operations.append = function(html, updated) {
 	return true;
 };
 
-function Instance(id, element, declaration, options) {
+function Instance(id, tab, element, declaration, options) {
 	this.$events = {};
 	this.id = id;
+	this.tab = tab;
 	this.scope = 'scope' + id;
 	this.name = declaration.name;
 	this.options = $.extend(true, CLONE(declaration.options), options || EMPTYOBJECT);
