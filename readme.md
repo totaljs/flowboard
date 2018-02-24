@@ -19,6 +19,17 @@ var options = {};
 
 // options.url = '/$flowboard/';
 
+// Default light theme
+// options.dark = false;
+
+// Enables backing up of Dashboard designer
+// options.backup = true;
+// default: false
+
+// Enables link to Flow (if exists) in context menu
+// options.flow = true;
+// default: true
+
 // A maximum length of request:
 // options.limit = 50;
 
@@ -138,7 +149,7 @@ exports.install = function(instance) {
     // Appends HTML (alias for instance.element.append())
 
     instance.html(html);
-    // Rewrites content (alias for instance.element.html())    
+    // Rewrites content (alias for instance.element.html())
 
     instance.event(html);
     // Registers a listener for the event (alias for instance.element.on())
@@ -149,7 +160,7 @@ exports.install = function(instance) {
     // =======================================
     // EVENTS
     // =======================================
-        
+
     instance.on('destroy', function() {
         // instance is destroying
     });

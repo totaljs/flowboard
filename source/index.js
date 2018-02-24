@@ -46,6 +46,15 @@ exports.install = function(options) {
 		});
 	}
 
+	if (OPT.dark == null)
+		OPT.dark = true;
+
+	if (OPT.flow == null)
+		OPT.flow = true;
+
+	if (OPT.dashboard == null)
+		OPT.dashboard = true;
+
 	global.FLOWBOARD.url = OPT.url = U.path(OPT.url || '/$flowboard/');
 	!OPT.limit && (OPT.limit = 50);
 	!OPT.templates && (OPT.templates = 'https://rawgit.com/totaljs/flowboardcomponents/master/templates.json');
@@ -244,7 +253,9 @@ function component_uninstall(controller, name, callback) {
 
 function save(body, callback) {
 	var path = F.path.root(FILEDESIGNER);
-	Fs.writeFile(path, JSON.stringify(body), callback || NOOP);
+	var json = JSON.stringify(body);
+	Fs.writeFile(path, json, callback || NOOP);
+	OPT.backup && Fs.writeFile(F.path.root(FILEDESIGNER.replace(/\.json/g, '-' + F.datetime.format('yyyyMMdd_HHmmss') + '.backup')), json, NOOP);
 }
 
 function send_settings(client, callback) {

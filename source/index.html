@@ -17,35 +17,27 @@
 	<link type="text/css" rel="stylesheet" href="@{model.url}default.css" />
 	<script>var user = JSON.parse('@{json(user)}');!user && (user = {});</script>
 </head>
-<body data-jc="exec,binder" class="themedark">
+<body data-jc="exec,binder"@{if model.dark} class="themedark"@{fi}>
 
 	<div data-jc="message" data-jc-config="button:@(Close)"></div>
 	<div data-jc="confirm"></div>
 	<div data-jc="contextmenu"></div>
 	<div data-jc="loading"></div>
+	<div data-jc="calendar" data-jc-config="days:@(SU,MO,TU,WE,TH,FR,SO);firstday:0;months:@(January,February,March,April,May,June,July,August,September,October,November,December);today:@(Set date to today)"></div>
 	<div data-jc="websocket" data-jc-config="url:@{model.url}?&token=@{query.token}&baa=@{repository.baa}"></div>
 	<div data-jc="audio" data-jc-path="common.volume"></div>
+	<div data-jc="snackbar" data-jc-config="button:@(Dismiss)"></div>
 
-	<div data-jc="resource">
-		<script type="text/plain">
-			yes:@(Yes)
-			no:@(No)
-			confirm-remove-widget:@(Are you sure you want to remove widget?)
-		</script>
-	</div>
-
-	<a href="javascript:void(0)" data-exec="mainmenu" class="mainmenu exec"><i class="fa fa-navicon"></i></a>
+	<a href="javascript:void(0)" data-exec="mainmenu" class="mainmenu exec"><i class="fa fa-ellipsis-h"></i></a>
 
 	<div class="toolbar">
-		<div class="container">
-			<div class="tabs">
-				<div data-jc="repeater" data-jc-path="common.tabs">
-					<script type="text/html">
-						<a href="#{{ linker }}" data-id="{{ id }}" data-b="common.tab" data-b-class="n => (n && n.id === common.tabs[{{ index }}].id ? '+' : '-') + 'selected +tab'">{{ name }}</a>
-					</script>
-				</div>
-				<a href="javascript:void(0)" class="last exec" data-exec="#tabs.add"><i class="fa fa-plus-circle"></i></a>
+		<div class="tabs">
+			<div data-jc="repeater" data-jc-path="common.tabs">
+				<script type="text/html">
+					<a href="#{{ linker }}" data-id="{{ id }}" data-b="common.tab" data-b-class="n => (n && n.id === common.tabs[{{ index }}].id ? '+' : '-') + 'selected +tab'">{{ name }}</a>
+				</script>
 			</div>
+			<a href="javascript:void(0)" class="last exec" data-exec="#tabs.add"><i class="fa fa-plus"></i></a>
 		</div>
 	</div>
 
@@ -72,9 +64,9 @@
 
 	<section class="controls-container">
 		<nav>
-			<button class="exec" data-exec="designer_duplicate" data-b="common.selected" data-b-disabled="n => n" disabled="disabled"><i class="fa fa-copy"></i></button>
-			<button class="exec" data-exec="designer_remove" data-b="common.selected" data-b-disabled="n => n" disabled="disabled"><i class="fa fa-times"></i></button>
-			<button class="exec" data-exec="designer_lock" data-b="common.selected" data-b-disabled="n => n"><i data-b="common.selected" data-b-class="n => n && n.hasClass('locked') ? '+fa-lock -fa-unlock' : '+fa-unlock -fa-lock'" class="fa fa-lock"></i></button>
+			<button class="exec" data-exec="designer_duplicate" data-b="common.selected" data-b-disable="n => !n" disabled="disabled"><i class="fa fa-copy"></i></button>
+			<button class="exec" data-exec="designer_remove" data-b="common.selected" data-b-disable="n => !n" disabled="disabled"><i class="fa fa-times"></i></button>
+			<button class="exec" data-exec="designer_lock" data-b="common.selected" data-b-disable="n => !n"><i data-b="common.selected" data-b-class="n => n && n.hasClass('locked') ? '+fa-lock -fa-unlock' : '+fa-unlock -fa-lock'" class="fa fa-lock"></i></button>
 			<button class="exec" data-exec="components_scrollleft"><i class="fa fa-caret-left"></i></button>
 			<button class="exec" data-exec="components_scrollright"><i class="fa fa-caret-right"></i></button>
 		</nav>
@@ -102,6 +94,7 @@
 	<div id="flowboardsettings"></div>
 	<div data-jc="importer" data-jc-path="common.form" data-jc-config="if:database;reload:formdatabase_reload;url:@{model.url}templates/form-database.html"></div>
 	<div data-jc="importer" data-jc-path="common.form" data-jc-config="if:tab;url:@{model.url}templates/form-tab.html"></div>
+	<div data-jc="importer" data-jc-path="common.form2" data-jc-config="if:components;url:@{model.url}templates/form-components.html"></div>
 
 	@{import(model.url + 'default.js')}
 	@{place('scripts')}
@@ -127,9 +120,9 @@
 
 		WATCH('common.theme', function(path, value) {
 			var body = $(document.body);
-			var cls = body.attr('class').match(/theme\w+/g);
-			cls && body.removeClass(cls.toString());
-			value && body.addClass('theme' + value);
+			var cls = (body.attr('class') || '').match(/theme\w+/g);
+			cls && body.rclass(cls.toString());
+			value && body.aclass('theme' + value);
 		}, true);
 
 		function centerize() {
@@ -143,7 +136,7 @@
 		WAIT('innerWidth', centerize);
 
 		WATCH('common.draft', function(path, value) {
-			$('body').toggleClass('draft', value === true);
+			$('body').tclass('draft', value === true);
 			SETTER(true, 'designer', 'readonly', value !== true);
 		}, true);
 
@@ -228,21 +221,28 @@
 				items.push({ name: save ? '@(Save flowboard)' : '@(Edit flowboard)', icon: save ? 'fa-floppy-o' : 'fa-pencil', value: 'edit' });
 			}
 
-			@{if helpers.FLOW || helpers.DASHBOARD}
-			items.push('@(Applications)');
-			@{if helpers.DASHBOARD}
-			items.push({ name: '@(Dashboard)', icon: 'fa-dashboard', url: '@{helpers.DASHBOARD.url}' });
-			@{fi}
-			@{if helpers.FLOW}
-			items.push({ name: '@(Flow designer)', icon: 'fa-sitemap', url: '@{helpers.FLOW.url}' });
-			@{fi}
+			@{if model.flow || model.dashboard}
+				@{if helpers.DASHBOARD || helpers.FLOW}
+					items.push('@(Applications)');
+					@{if helpers.DASHBOARD}
+					items.push({ name: '@(Dashboard)', icon: 'fa-dashboard', value: 'dashboard' });
+					@{fi}
+					@{if helpers.FLOW}
+					items.push({ name: '@(Flow designer)', icon: 'fa-sitemap', value: 'flow' });
+					@{fi}
+				@{fi}
 			@{fi}
 
-			FIND('contextmenu').show('left', el, items, function(value) {
+			FIND('contextmenu').show('right', el, items, function(value) {
 				switch (value) {
-					@{if helpers.FLOW}
+					@{if model.flow && helpers.FLOW}
 					case 'flow':
 						location.href = '@{helpers.FLOW.url}';
+						break;
+					@{fi}
+					@{if model.dashboard && helpers.DASHBOARD}
+					case 'dashboard':
+						location.href = '@{helpers.DASHBOARD.url}';
 						break;
 					@{fi}
 					case 'edit':
@@ -263,7 +263,7 @@
 						themechanger();
 						break;
 					case 'save':
-						SETTER('confirm', 'confirm', '@(Are you sure you want to save a current state?)', ['@(Yes)', '@(Cancel)'], function(index) {
+						SETTER('confirm', 'confirm', '@(Are you sure you want to save a current state?)', ['"floppy-o" @(Yes)', '@(Cancel)'], function(index) {
 							if (index)
 								return;
 							var obj = {};
@@ -278,7 +278,7 @@
 						});
 						break;
 				}
-			}, -3);
+			}, 5);
 		}
 
 		ON('tabs.save', function(form) {
@@ -310,11 +310,11 @@
 		});
 
 		ON('designer.remove', function(el) {
-			SETTER('confirm', 'confirm', '@(Are you sure you want to remove selected component?)', ['@(Yes)', '@(Cancel)'], function(index) {
-				if (index)
-					return;
-				el.remove();
-				EMIT('designer.resizable', null);
+			SETTER('confirm', 'confirm', '@(Are you sure you want to remove selected component?)', ['"trash-o" @(Yes)', '@(Cancel)'], function(index) {
+				if (!index) {
+					el.remove();
+					EMIT('designer.resizable', null);
+				}
 			});
 		});
 
@@ -334,11 +334,11 @@
 			}
 
 			var el = $('.resizable-container');
-			el.toggleClass('resizable-container-visible', element ? true : false);
+			el.tclass('resizable-container-visible', element ? true : false);
 		});
 
 		ON('designer.settings', function(el, instance) {
-			$('.resizable-container').removeClass('resizable-container-visible', false);
+			$('.resizable-container').rclass('resizable-container-visible', false);
 			instance.settings();
 		});
 
