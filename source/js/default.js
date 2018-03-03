@@ -11,6 +11,8 @@ SETTER(true, 'loading', 'hide', 1000);
 
 common.operations.emit = function(name, a, b, c, d) {
 	$('figure.component').each(function() {
+		if (name === 'data')
+			a = CLONE(a);
 		this.$instance.emit(name, a, b, c, d);
 	});
 	return common.operations;
