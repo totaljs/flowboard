@@ -232,8 +232,8 @@ Instance.prototype.settings = function() {
 	var self = this;
 	staticContent(self, function() {
 		var options = CLONE(self.options);
+		EMIT('open.' + self.name, self, options);
 		SET('settings.' + self.name, options, true);
-		EMIT('open.' + self.name, options);
 		SET('common.form', 'settings-' + self.name);
 		RESET('settings.' + self.name + '.*', 500);
 	});
