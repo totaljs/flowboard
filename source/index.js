@@ -57,7 +57,7 @@ exports.install = function(options) {
 
 	global.FLOWBOARD.url = OPT.url = U.path(OPT.url || '/$flowboard/');
 	!OPT.limit && (OPT.limit = 50);
-	!OPT.templates && (OPT.templates = 'https://rawgit.com/totaljs/flowboardcomponents/master/templates.json');
+	!OPT.templates && (OPT.templates = 'https://cdn.totaljs.com/flowboard/templates.json');
 
 	try {
 		Fs.mkdirSync(F.path.root(PATH));
