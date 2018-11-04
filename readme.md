@@ -34,7 +34,7 @@ var options = {};
 // options.limit = 50;
 
 // Predefined set of components (default value):
-// options.templates = 'https://raw.githubusercontent.com/totaljs/flowboardcomponents/master/templates.json';
+// options.templates = 'https://cdn.totaljs.com/flowboard/templates.json';
 
 // ====================================
 // Security (OPTIONAL)
