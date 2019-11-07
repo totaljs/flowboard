@@ -75,7 +75,7 @@
 
 	<section class="components-container">
 		<div class="components-scroller">
-			<div id="components" data-jc="repeater" data-jc-path="common.database">
+			<div id="components" data-jc="repeater__common.database">
 				<script type="text/html">
 					<span class="component" draggable="true" data-name="{{ name }}"><i class="fa fa-{{ icon }}"></i>{{ title }}</span>
 				</script>
@@ -93,9 +93,9 @@
 	</div>
 
 	<div id="flowboardsettings"></div>
-	<div data-jc="importer" data-jc-path="common.form" data-jc-config="if:database;reload:formdatabase_reload;url:@{model.url}templates/form-database.html"></div>
-	<div data-jc="importer" data-jc-path="common.form" data-jc-config="if:tab;url:@{model.url}templates/form-tab.html"></div>
-	<div data-jc="importer" data-jc-path="common.form2" data-jc-config="if:components;url:@{model.url}templates/form-components.html"></div>
+	<div data-jc="importer__common.form__if:database;reload:formdatabase_reload;url:@{model.url}templates/form-database.html"></div>
+	<div data-jc="importer__common.form__if:tab;url:@{model.url}templates/form-tab.html"></div>
+	<div data-jc="importer__common.form2__if:components;url:@{model.url}templates/form-components.html"></div>
 
 	@{import(model.url + 'default.js')}
 	@{place('scripts')}
